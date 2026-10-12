@@ -26,10 +26,15 @@ ALTER TABLE IF EXISTS ONLY public.reading_bookclub DROP CONSTRAINT IF EXISTS rea
 ALTER TABLE IF EXISTS ONLY public.reading DROP CONSTRAINT IF EXISTS reading_book_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.library_loan DROP CONSTRAINT IF EXISTS library_loan_book_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.copy DROP CONSTRAINT IF EXISTS copy_book_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.bookclub_year DROP CONSTRAINT IF EXISTS bookclub_year_bookclub_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.bookclub_pick DROP CONSTRAINT IF EXISTS bookclub_pick_bookclub_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.bookclub_pick DROP CONSTRAINT IF EXISTS bookclub_pick_book_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.book_setting DROP CONSTRAINT IF EXISTS book_setting_book_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.book_genre DROP CONSTRAINT IF EXISTS book_genre_book_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.book_author DROP CONSTRAINT IF EXISTS book_author_book_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.book_author DROP CONSTRAINT IF EXISTS book_author_author_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.bingo_prompt DROP CONSTRAINT IF EXISTS bingo_prompt_reading_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.bingo_prompt DROP CONSTRAINT IF EXISTS bingo_prompt_board_id_fkey;
 DROP INDEX IF EXISTS public.series_name_uq;
 DROP INDEX IF EXISTS public.series_entry_series_idx;
 DROP INDEX IF EXISTS public.series_entry_book_uq;
@@ -43,9 +48,14 @@ DROP INDEX IF EXISTS public.library_loan_book_idx;
 DROP INDEX IF EXISTS public.flyway_schema_history_s_idx;
 DROP INDEX IF EXISTS public.copy_format_idx;
 DROP INDEX IF EXISTS public.copy_book_idx;
+DROP INDEX IF EXISTS public.bookclub_pick_club_idx;
+DROP INDEX IF EXISTS public.bookclub_pick_book_idx;
+DROP INDEX IF EXISTS public.bookclub_name_uq;
 DROP INDEX IF EXISTS public.book_title_idx;
 DROP INDEX IF EXISTS public.book_author_author_idx;
 DROP INDEX IF EXISTS public.author_name_uq;
+ALTER TABLE IF EXISTS ONLY public.yearly_goal DROP CONSTRAINT IF EXISTS yearly_goal_year_key;
+ALTER TABLE IF EXISTS ONLY public.yearly_goal DROP CONSTRAINT IF EXISTS yearly_goal_pkey;
 ALTER TABLE IF EXISTS ONLY public.series DROP CONSTRAINT IF EXISTS series_pkey;
 ALTER TABLE IF EXISTS ONLY public.series_entry DROP CONSTRAINT IF EXISTS series_entry_pkey;
 ALTER TABLE IF EXISTS ONLY public.reading_tbr_prompt DROP CONSTRAINT IF EXISTS reading_tbr_prompt_pkey;
@@ -58,13 +68,23 @@ ALTER TABLE IF EXISTS ONLY public.list_value DROP CONSTRAINT IF EXISTS list_valu
 ALTER TABLE IF EXISTS ONLY public.library_loan DROP CONSTRAINT IF EXISTS library_loan_pkey;
 ALTER TABLE IF EXISTS ONLY public.flyway_schema_history DROP CONSTRAINT IF EXISTS flyway_schema_history_pk;
 ALTER TABLE IF EXISTS ONLY public.copy DROP CONSTRAINT IF EXISTS copy_pkey;
+ALTER TABLE IF EXISTS ONLY public.bookclub_year DROP CONSTRAINT IF EXISTS bookclub_year_pkey;
+ALTER TABLE IF EXISTS ONLY public.bookclub_year DROP CONSTRAINT IF EXISTS bookclub_year_bookclub_id_year_key;
+ALTER TABLE IF EXISTS ONLY public.bookclub DROP CONSTRAINT IF EXISTS bookclub_pkey;
+ALTER TABLE IF EXISTS ONLY public.bookclub_pick DROP CONSTRAINT IF EXISTS bookclub_pick_pkey;
 ALTER TABLE IF EXISTS ONLY public.book_setting DROP CONSTRAINT IF EXISTS book_setting_pkey;
 ALTER TABLE IF EXISTS ONLY public.book DROP CONSTRAINT IF EXISTS book_pkey;
 ALTER TABLE IF EXISTS ONLY public.book DROP CONSTRAINT IF EXISTS book_key_uq;
 ALTER TABLE IF EXISTS ONLY public.book_genre DROP CONSTRAINT IF EXISTS book_genre_pkey;
 ALTER TABLE IF EXISTS ONLY public.book_author DROP CONSTRAINT IF EXISTS book_author_uq;
 ALTER TABLE IF EXISTS ONLY public.book_author DROP CONSTRAINT IF EXISTS book_author_pkey;
+ALTER TABLE IF EXISTS ONLY public.bingo_prompt DROP CONSTRAINT IF EXISTS bingo_prompt_reading_id_key;
+ALTER TABLE IF EXISTS ONLY public.bingo_prompt DROP CONSTRAINT IF EXISTS bingo_prompt_pkey;
+ALTER TABLE IF EXISTS ONLY public.bingo_prompt DROP CONSTRAINT IF EXISTS bingo_prompt_board_id_position_key;
+ALTER TABLE IF EXISTS ONLY public.bingo_board DROP CONSTRAINT IF EXISTS bingo_board_year_season_key;
+ALTER TABLE IF EXISTS ONLY public.bingo_board DROP CONSTRAINT IF EXISTS bingo_board_pkey;
 ALTER TABLE IF EXISTS ONLY public.author DROP CONSTRAINT IF EXISTS author_pkey;
+DROP TABLE IF EXISTS public.yearly_goal;
 DROP TABLE IF EXISTS public.series_entry;
 DROP TABLE IF EXISTS public.series;
 DROP TABLE IF EXISTS public.reading_tbr_prompt;
@@ -77,10 +97,15 @@ DROP TABLE IF EXISTS public.list_value;
 DROP TABLE IF EXISTS public.library_loan;
 DROP TABLE IF EXISTS public.flyway_schema_history;
 DROP TABLE IF EXISTS public.copy;
+DROP TABLE IF EXISTS public.bookclub_year;
+DROP TABLE IF EXISTS public.bookclub_pick;
+DROP TABLE IF EXISTS public.bookclub;
 DROP TABLE IF EXISTS public.book_setting;
 DROP TABLE IF EXISTS public.book_genre;
 DROP TABLE IF EXISTS public.book_author;
 DROP TABLE IF EXISTS public.book;
+DROP TABLE IF EXISTS public.bingo_prompt;
+DROP TABLE IF EXISTS public.bingo_board;
 DROP TABLE IF EXISTS public.author;
 SET default_tablespace = '';
 
@@ -115,6 +140,67 @@ ALTER TABLE public.author ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
 
 
 --
+-- Name: bingo_board; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bingo_board (
+    id bigint NOT NULL,
+    year integer NOT NULL,
+    season integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT bingo_board_season_check CHECK (((season >= 1) AND (season <= 4))),
+    CONSTRAINT bingo_board_year_check CHECK (((year >= 1900) AND (year <= 2999)))
+);
+
+
+--
+-- Name: bingo_board_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bingo_board ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bingo_board_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: bingo_prompt; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bingo_prompt (
+    id bigint NOT NULL,
+    board_id bigint NOT NULL,
+    "position" integer NOT NULL,
+    text text DEFAULT ''::text NOT NULL,
+    bonus boolean DEFAULT false NOT NULL,
+    done boolean DEFAULT false NOT NULL,
+    reading_id bigint,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT bingo_prompt_position_check CHECK ((("position" >= 0) AND ("position" <= 24)))
+);
+
+
+--
+-- Name: bingo_prompt_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bingo_prompt ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bingo_prompt_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: book; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -134,6 +220,7 @@ CREATE TABLE public.book (
     read_before_tracking boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    not_out_yet boolean DEFAULT false NOT NULL,
     CONSTRAINT book_pages_check CHECK ((pages > 0))
 );
 
@@ -182,6 +269,95 @@ CREATE TABLE public.book_setting (
     book_id bigint NOT NULL,
     "position" integer NOT NULL,
     setting text NOT NULL
+);
+
+
+--
+-- Name: bookclub; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bookclub (
+    id bigint NOT NULL,
+    name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: bookclub_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bookclub ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bookclub_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: bookclub_pick; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bookclub_pick (
+    id bigint NOT NULL,
+    bookclub_id bigint NOT NULL,
+    year integer NOT NULL,
+    period integer,
+    period_end integer,
+    book_id bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT bookclub_pick_period_check CHECK (((period >= 1) AND (period <= 12))),
+    CONSTRAINT bookclub_pick_period_end_check CHECK (((period_end >= 1) AND (period_end <= 12))),
+    CONSTRAINT bookclub_pick_year_check CHECK (((year >= 1900) AND (year <= 2999)))
+);
+
+
+--
+-- Name: bookclub_pick_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bookclub_pick ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bookclub_pick_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: bookclub_year; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bookclub_year (
+    id bigint NOT NULL,
+    bookclub_id bigint NOT NULL,
+    year integer NOT NULL,
+    schedule text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT bookclub_year_schedule_check CHECK ((schedule = ANY (ARRAY['MONTHLY'::text, 'SEASONAL'::text, 'CASUAL'::text]))),
+    CONSTRAINT bookclub_year_year_check CHECK (((year >= 1900) AND (year <= 2999)))
+);
+
+
+--
+-- Name: bookclub_year_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bookclub_year ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bookclub_year_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
 );
 
 
@@ -439,6 +615,37 @@ ALTER TABLE public.series_entry ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDEN
 
 ALTER TABLE public.series ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME public.series_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: yearly_goal; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearly_goal (
+    id bigint NOT NULL,
+    year integer NOT NULL,
+    books_goal integer,
+    pages_goal integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT yearly_goal_books_goal_check CHECK ((books_goal >= 0)),
+    CONSTRAINT yearly_goal_pages_goal_check CHECK ((pages_goal >= 0)),
+    CONSTRAINT yearly_goal_year_check CHECK (((year >= 1900) AND (year <= 2999)))
+);
+
+
+--
+-- Name: yearly_goal_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.yearly_goal ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.yearly_goal_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1284,1524 +1491,1852 @@ COPY public.author (id, name, gender, country, created_at, updated_at) FROM stdi
 
 
 --
+-- Data for Name: bingo_board; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bingo_board (id, year, season, created_at, updated_at) FROM stdin;
+1	2026	1	2026-10-12 12:11:26.103639+00	2026-10-12 12:11:26.103639+00
+2	2026	2	2026-10-12 12:11:26.999025+00	2026-10-12 12:11:26.999025+00
+3	2026	3	2026-10-12 12:11:27.500766+00	2026-10-12 12:11:27.500766+00
+4	2026	4	2026-10-12 12:11:28.090879+00	2026-10-12 12:11:28.090879+00
+\.
+
+
+--
+-- Data for Name: bingo_prompt; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bingo_prompt (id, board_id, "position", text, bonus, done, reading_id, created_at, updated_at) FROM stdin;
+13	1	12	Bonus challenge	t	f	\N	2026-10-12 12:11:26.696786+00	2026-10-12 12:11:26.696786+00
+38	2	12	Bonus challenge	t	f	\N	2026-10-12 12:11:27.208331+00	2026-10-12 12:11:27.208331+00
+63	3	12	Bonus challenge	t	f	\N	2026-10-12 12:11:27.698708+00	2026-10-12 12:11:27.698708+00
+88	4	12	Bonus challenge	t	f	\N	2026-10-12 12:11:28.204461+00	2026-10-12 12:11:28.204461+00
+5	1	4	host a BRBN buddy read	f	f	\N	2026-10-12 12:11:26.595317+00	2026-10-12 12:11:28.305564+00
+6	1	5	a book with animal in the title	f	f	\N	2026-10-12 12:11:26.59898+00	2026-10-12 12:11:28.305585+00
+15	1	14	a book with 'library' in the text	f	f	1442	2026-10-12 12:11:26.705461+00	2026-10-12 12:14:09.196151+00
+74	3	23	a book featuring a secret identity	f	f	1531	2026-10-12 12:11:27.808714+00	2026-10-12 12:16:02.320093+00
+17	1	16	your last read of 2025	f	f	1452	2026-10-12 12:11:26.711266+00	2026-10-12 12:16:33.894004+00
+21	1	20	a book you borrowed	f	f	\N	2026-10-12 12:11:26.800313+00	2026-10-12 12:11:28.3059+00
+24	1	23	the newest addition to your TBR	f	f	\N	2026-10-12 12:11:26.808341+00	2026-10-12 12:11:28.305936+00
+28	2	2	host a BRBN buddy read	f	f	\N	2026-10-12 12:11:27.009404+00	2026-10-12 12:11:28.306021+00
+32	2	6	a book written in verse	f	f	\N	2026-10-12 12:11:27.190202+00	2026-10-12 12:11:28.306086+00
+35	2	9	a book with a pink cover	f	f	\N	2026-10-12 12:11:27.200301+00	2026-10-12 12:11:28.30615+00
+37	2	11	a book by an Australian author	f	f	\N	2026-10-12 12:11:27.205729+00	2026-10-12 12:11:28.306174+00
+41	2	15	a book you've been putting off	f	f	\N	2026-10-12 12:11:27.21569+00	2026-10-12 12:11:28.306212+00
+43	2	17	a book with a typographic cover	f	f	\N	2026-10-12 12:11:27.296648+00	2026-10-12 12:11:28.306234+00
+48	2	22	a book with all female POVs	f	f	\N	2026-10-12 12:11:27.309638+00	2026-10-12 12:11:28.306287+00
+52	3	1	a book from the backlist of a favorite author	f	f	\N	2026-10-12 12:11:27.596835+00	2026-10-12 12:11:28.306349+00
+57	3	6	cover color random generator	f	f	\N	2026-10-12 12:11:27.608578+00	2026-10-12 12:11:28.306408+00
+58	3	7	host a BRBN buddy read	f	f	\N	2026-10-12 12:11:27.610935+00	2026-10-12 12:11:28.306419+00
+60	3	9	a book you almost used for another prompt	f	f	\N	2026-10-12 12:11:27.615465+00	2026-10-12 12:11:28.306441+00
+67	3	16	author shares your star sign	f	f	\N	2026-10-12 12:11:27.710182+00	2026-10-12 12:11:28.306509+00
+68	3	17	a book with swimwear on the front cover	f	f	\N	2026-10-12 12:11:27.712906+00	2026-10-12 12:11:28.306519+00
+75	3	24	main character has a creative job	f	f	\N	2026-10-12 12:11:27.811854+00	2026-10-12 12:11:28.3066+00
+76	4	0	someone gets tied up	f	f	\N	2026-10-12 12:11:28.094291+00	2026-10-12 12:11:28.306625+00
+77	4	1	a book you don't know much about	f	f	\N	2026-10-12 12:11:28.096854+00	2026-10-12 12:11:28.306639+00
+78	4	2	a book with a map	f	f	\N	2026-10-12 12:11:28.099198+00	2026-10-12 12:11:28.306651+00
+79	4	3	a book by a Scandinavian author	f	f	\N	2026-10-12 12:11:28.101596+00	2026-10-12 12:11:28.306662+00
+80	4	4	title starts with the same first letter as the month	f	f	\N	2026-10-12 12:11:28.103904+00	2026-10-12 12:11:28.306673+00
+83	4	7	characters visit a forest or woods	f	f	\N	2026-10-12 12:11:28.191646+00	2026-10-12 12:11:28.306704+00
+86	4	10	host a BRBN buddy read	f	f	\N	2026-10-12 12:11:28.199639+00	2026-10-12 12:11:28.306742+00
+87	4	11	a book with less than 20 chapters	f	f	\N	2026-10-12 12:11:28.202027+00	2026-10-12 12:11:28.30676+00
+90	4	14	a book about revenge	f	f	\N	2026-10-12 12:11:28.209636+00	2026-10-12 12:11:28.306788+00
+91	4	15	a book with the MC's name in the title	f	f	\N	2026-10-12 12:11:28.211948+00	2026-10-12 12:11:28.391138+00
+92	4	16	a book with a woodland animal on the front cover	f	f	\N	2026-10-12 12:11:28.214313+00	2026-10-12 12:11:28.391322+00
+93	4	17	characters solve a mystery	f	f	\N	2026-10-12 12:11:28.216542+00	2026-10-12 12:11:28.391379+00
+94	4	18	MC has magic	f	f	\N	2026-10-12 12:11:28.218845+00	2026-10-12 12:11:28.3914+00
+96	4	20	a book that resonates with you	f	f	\N	2026-10-12 12:11:28.223433+00	2026-10-12 12:11:28.391427+00
+97	4	21	a book with a tattooed MC	f	f	\N	2026-10-12 12:11:28.29065+00	2026-10-12 12:11:28.391442+00
+98	4	22	a book with an orange or black cover	f	f	\N	2026-10-12 12:11:28.294024+00	2026-10-12 12:11:28.391454+00
+99	4	23	a book with an unlikely alliance	f	f	\N	2026-10-12 12:11:28.297221+00	2026-10-12 12:11:28.391466+00
+100	4	24	a book with 'moonlight' in the text	f	f	\N	2026-10-12 12:11:28.300127+00	2026-10-12 12:11:28.391482+00
+1	1	0	a book with footnotes	f	f	1461	2026-10-12 12:11:26.494883+00	2026-10-12 12:11:32.20277+00
+2	1	1	a book your younger self would've loved	f	f	1455	2026-10-12 12:11:26.508711+00	2026-10-12 12:11:32.202951+00
+3	1	2	a book with a Christmas decoration on the cover	f	f	1446	2026-10-12 12:11:26.51215+00	2026-10-12 12:11:32.203+00
+4	1	3	MC with a geographical first name	f	f	1468	2026-10-12 12:11:26.591676+00	2026-10-12 12:11:32.203015+00
+7	1	6	a Christmas novella	f	f	1445	2026-10-12 12:11:26.601991+00	2026-10-12 12:11:32.203026+00
+8	1	7	a book blurbed by one of your favorite authors	f	f	1457	2026-10-12 12:11:26.60469+00	2026-10-12 12:11:32.203034+00
+9	1	8	a book with a prologue and an epilogue	f	f	1471	2026-10-12 12:11:26.608568+00	2026-10-12 12:11:32.20304+00
+10	1	9	your first read of 2026	f	f	1453	2026-10-12 12:11:26.611677+00	2026-10-12 12:11:32.203046+00
+11	1	10	a book by a Canadian author	f	f	1466	2026-10-12 12:11:26.615622+00	2026-10-12 12:11:32.203052+00
+12	1	11	a book featuring a winter sport	f	f	1464	2026-10-12 12:11:26.693662+00	2026-10-12 12:11:32.203058+00
+14	1	13	a book set during winter or in a snowy setting	f	f	1449	2026-10-12 12:11:26.702048+00	2026-10-12 12:11:32.203065+00
+16	1	15	a book with a hat, scarf or gloves on the cover	f	f	1441	2026-10-12 12:11:26.708407+00	2026-10-12 12:11:32.203073+00
+18	1	17	a book featuring strong female friendship	f	f	1460	2026-10-12 12:11:26.790157+00	2026-10-12 12:11:32.203079+00
+19	1	18	a book with a title that starts with your first initial	f	f	1469	2026-10-12 12:11:26.793875+00	2026-10-12 12:11:32.203085+00
+20	1	19	a book split into parts	f	f	1448	2026-10-12 12:11:26.796747+00	2026-10-12 12:11:32.203092+00
+22	1	21	a book with a bilingual MC	f	f	1444	2026-10-12 12:11:26.803061+00	2026-10-12 12:11:32.203101+00
+23	1	22	a book with a blue or white cover	f	f	1454	2026-10-12 12:11:26.805733+00	2026-10-12 12:11:32.203108+00
+25	1	24	a book featuring royalty	f	f	1475	2026-10-12 12:11:26.810867+00	2026-10-12 12:11:32.203115+00
+26	2	0	a book with multiple authors	f	f	1505	2026-10-12 12:11:27.003011+00	2026-10-12 12:11:32.203126+00
+27	2	1	random number generator / count across your TBR	f	f	1496	2026-10-12 12:11:27.006606+00	2026-10-12 12:11:32.203135+00
+29	2	3	a book set on a ranch or a farm	f	f	1494	2026-10-12 12:11:27.092978+00	2026-10-12 12:11:32.203143+00
+30	2	4	a book over 500 pages long	f	f	1484	2026-10-12 12:11:27.096041+00	2026-10-12 12:11:32.203149+00
+31	2	5	a 2025 book award nominee	f	f	1501	2026-10-12 12:11:27.099511+00	2026-10-12 12:11:32.203155+00
+33	2	7	a book with 'butterfly' in the text	f	f	1482	2026-10-12 12:11:27.194284+00	2026-10-12 12:11:32.203162+00
+34	2	8	the shortest book on your TBR	f	f	1495	2026-10-12 12:11:27.197291+00	2026-10-12 12:11:32.203168+00
+36	2	10	title starts with the same letter as your last read	f	f	1497	2026-10-12 12:11:27.203055+00	2026-10-12 12:11:32.203175+00
+39	2	13	MC works in a hospital	f	f	1478	2026-10-12 12:11:27.210826+00	2026-10-12 12:11:32.203183+00
+40	2	14	a book that's not your usual genre	f	f	1502	2026-10-12 12:11:27.213315+00	2026-10-12 12:11:32.203189+00
+42	2	16	a book with a book related word in the title	f	f	1499	2026-10-12 12:11:27.293702+00	2026-10-12 12:11:32.203196+00
+44	2	18	a book you're in the mood to read	f	f	1490	2026-10-12 12:11:27.299282+00	2026-10-12 12:11:32.203202+00
+45	2	19	book title appears in the text	f	f	1483	2026-10-12 12:11:27.301725+00	2026-10-12 12:11:32.203208+00
+46	2	20	MC with a botanical first name	f	f	1493	2026-10-12 12:11:27.30433+00	2026-10-12 12:11:32.203214+00
+47	2	21	a book with a bird on the front cover	f	f	1500	2026-10-12 12:11:27.307145+00	2026-10-12 12:11:32.203219+00
+49	2	23	a book with a four word title	f	f	1487	2026-10-12 12:11:27.312155+00	2026-10-12 12:11:32.203226+00
+50	2	24	emoji story poll	f	f	1480	2026-10-12 12:11:27.31451+00	2026-10-12 12:11:32.203231+00
+51	3	0	a book with an academic setting	f	f	1510	2026-10-12 12:11:27.594078+00	2026-10-12 12:11:32.20324+00
+53	3	2	a book with punctuation in the title	f	f	1537	2026-10-12 12:11:27.599319+00	2026-10-12 12:11:32.203247+00
+54	3	3	characters visit a beach or lake	f	f	1522	2026-10-12 12:11:27.601711+00	2026-10-12 12:11:32.203253+00
+55	3	4	LGBTQ+ main character	f	f	1509	2026-10-12 12:11:27.603995+00	2026-10-12 12:11:32.203258+00
+56	3	5	a book with 'sunshine' in the text	f	f	1520	2026-10-12 12:11:27.606287+00	2026-10-12 12:11:32.203264+00
+59	3	8	main characters are rivals	f	f	1518	2026-10-12 12:11:27.613208+00	2026-10-12 12:11:32.203272+00
+61	3	10	a book featuring a game or competition	f	f	1544	2026-10-12 12:11:27.692619+00	2026-10-12 12:11:32.203279+00
+62	3	11	a book recommended by a friend	f	f	1512	2026-10-12 12:11:27.696049+00	2026-10-12 12:11:32.203284+00
+64	3	13	a book left over from last summer	f	f	1523	2026-10-12 12:11:27.701618+00	2026-10-12 12:11:32.203294+00
+65	3	14	a book with 'rainbow' in the text	f	f	1517	2026-10-12 12:11:27.704901+00	2026-10-12 12:11:32.203305+00
+66	3	15	a book that uses Roman numerals for chapters	f	f	1515	2026-10-12 12:11:27.707589+00	2026-10-12 12:11:32.203315+00
+69	3	18	average rating of 4 stars or above on Goodreads	f	f	1513	2026-10-12 12:11:27.71535+00	2026-10-12 12:11:32.203327+00
+70	3	19	a book based on real life events	f	f	1536	2026-10-12 12:11:27.790938+00	2026-10-12 12:11:32.203334+00
+71	3	20	a book with fruit on the front cover	f	f	1538	2026-10-12 12:11:27.795752+00	2026-10-12 12:11:32.203341+00
+72	3	21	a book with 'and' in the title	f	f	1539	2026-10-12 12:11:27.799742+00	2026-10-12 12:11:32.203347+00
+73	3	22	a book by a transgender author	f	f	1516	2026-10-12 12:11:27.805932+00	2026-10-12 12:11:32.203353+00
+81	4	5	a book with 'cobweb' in the text	f	f	1545	2026-10-12 12:11:28.106242+00	2026-10-12 12:11:32.203368+00
+82	4	6	a perfect autumn read	f	f	1548	2026-10-12 12:11:28.108567+00	2026-10-12 12:11:32.203375+00
+84	4	8	key or keyhole on the front cover	f	f	1546	2026-10-12 12:11:28.194746+00	2026-10-12 12:11:32.203381+00
+85	4	9	a book with text messages	f	f	1547	2026-10-12 12:11:28.197337+00	2026-10-12 12:11:32.203387+00
+89	4	13	a book that has been a celebrity book club pick	f	f	1552	2026-10-12 12:11:28.20673+00	2026-10-12 12:11:32.203396+00
+95	4	19	a book featuring an invisible disability	f	f	1550	2026-10-12 12:11:28.221+00	2026-10-12 12:11:32.203417+00
+\.
+
+
+--
 -- Data for Name: book; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.book (id, title, book_key, year_published, pages, type, audience, language_written, cover_color, serial, poc, lgbtqia, read_before_tracking, created_at, updated_at) FROM stdin;
-772	The Wives	the wives | tarryn fisher	2019	336	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:27.650875+00	2026-10-10 09:49:27.650875+00
-773	No Exit	no exit | taylor adams	2018	283	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:27.697632+00	2026-10-10 09:49:27.697632+00
-774	Regretting You	regretting you | colleen hoover	2019	365	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:27.756026+00	2026-10-10 09:49:27.756026+00
-775	Illuminae	illuminae | amie kaufman; jay kristoff	2015	599	Novel	Young adult	English	Orange	Series	f	f	f	2026-10-10 09:49:27.787042+00	2026-10-10 09:49:27.787042+00
-776	Into the Drowning Deep	into the drowning deep | mira grant	2017	440	Novel	Adult	English	Red	Series	f	t	f	2026-10-10 09:49:27.813883+00	2026-10-10 09:49:27.813883+00
-777	Holding Up the Universe	holding up the universe | jennifer niven	2016	271	Novel	Young adult	English	White	Standalone	f	f	f	2026-10-10 09:49:27.872091+00	2026-10-10 09:49:27.872091+00
-778	Throne of Glass	throne of glass | sarah j. maas	2013	430	Novel	Young adult	English	Purple	Series	f	f	f	2026-10-10 09:49:27.902849+00	2026-10-10 09:49:27.902849+00
-779	Imaginary Friend	imaginary friend | stephen chbosky	2019	706	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:27.969903+00	2026-10-10 09:49:27.969903+00
-780	The Simple Wild	the simple wild | k. a. tucker	2018	390	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:27.993016+00	2026-10-10 09:49:27.993016+00
-781	The Other People	the other people | c. j. tudor	2020	400	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:28.054243+00	2026-10-10 09:49:28.054243+00
-782	When We Were Vikings	when we were vikings | andrew david macdonald	2020	336	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:28.086458+00	2026-10-10 09:49:28.086458+00
-783	An Ember in the Ashes	an ember in the ashes | sabaa tahir	2016	311	Novel	Young adult	English	Yellow	Series	t	f	f	2026-10-10 09:49:28.151846+00	2026-10-10 09:49:28.151846+00
-784	One of Us Is Next	one of us is next | karen m. mcmanus	2020	377	Novel	Young adult	English	Red	Series	f	f	f	2026-10-10 09:49:28.180683+00	2026-10-10 09:49:28.180683+00
-785	Dead to Her	dead to her | sarah pinborough	2020	400	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:28.20677+00	2026-10-10 09:49:28.20677+00
-786	The Song of the Fireflies	the song of the fireflies | j. a. redmerski	2014	319	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:28.27053+00	2026-10-10 09:49:28.27053+00
-787	The Raven Boys	the raven boys | maggie stiefvater	2012	419	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:28.302284+00	2026-10-10 09:49:28.302284+00
-788	Such a Fun Age	such a fun age | kiley reid	2020	320	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:28.358445+00	2026-10-10 09:49:28.358445+00
-789	Perfect Little Children	perfect little children | sophie hannah	2020	329	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:28.38078+00	2026-10-10 09:49:28.38078+00
-790	The Dream Thieves	the dream thieves | maggie stiefvater	2013	450	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:28.392053+00	2026-10-10 09:49:28.392053+00
-791	Eight Perfect Murders	eight perfect murders | peter swanson	2020	288	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:28.465755+00	2026-10-10 09:49:28.465755+00
-792	Baby Teeth	baby teeth | zoje stage	2018	304	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:28.488345+00	2026-10-10 09:49:28.488345+00
-793	The Dark Dark	the dark dark | samantha hunt	2017	241	Short stories	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:28.514584+00	2026-10-10 09:49:28.514584+00
-794	Split Tooth	split tooth | tanya tagaq	2018	202	Verse	Adult	English	White	Standalone	t	f	f	2026-10-10 09:49:28.572038+00	2026-10-10 09:49:28.572038+00
-795	Pet Sematary	pet sematary | stephen king	1983	465	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:28.600511+00	2026-10-10 09:49:28.600511+00
-796	What If It's Us	what if it's us | adam silvera; becky albertalli	2018	433	Novel	Young adult	English	Blue	Standalone	t	t	f	2026-10-10 09:49:28.680266+00	2026-10-10 09:49:28.680266+00
-797	Vicious	vicious | v. e. schwab	2013	340	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:28.756844+00	2026-10-10 09:49:28.756844+00
-798	Pretty as a Picture	pretty as a picture | elizabeth little	2020	352	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:28.781834+00	2026-10-10 09:49:28.781834+00
-799	The Little Prince	the little prince | antoine de saint exupery	1943	91	Novel	Children	French	Blue	Standalone	f	f	f	2026-10-10 09:49:28.855183+00	2026-10-10 09:49:28.855183+00
-800	If We Were Villains	if we were villains | m. l. rio	2017	368	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:28.952982+00	2026-10-10 09:49:28.952982+00
-801	Wild Beauty	wild beauty | anna-marie mclemore	2017	313	Novel	Young adult	English	Multicolor	Standalone	t	t	f	2026-10-10 09:49:28.976763+00	2026-10-10 09:49:28.976763+00
-802	The Song of Achilles	the song of achilles | madeline miller	2011	322	Novel	Adult	English	Yellow	Standalone	f	t	f	2026-10-10 09:49:28.998976+00	2026-10-10 09:49:28.998976+00
-803	An Enchantment of Ravens	an enchantment of ravens | margaret rogerson	2017	303	Novel	Young adult	English	Multicolor	Standalone	f	f	f	2026-10-10 09:49:29.069308+00	2026-10-10 09:49:29.069308+00
-804	You Are Not Alone	you are not alone | greer hendricks; sarah pekkanen	2020	343	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:29.150488+00	2026-10-10 09:49:29.150488+00
-805	This Train is Being Held	this train is being held | ismee amiel williams	2020	336	Novel	Young adult	English	Pink	Standalone	t	f	f	2026-10-10 09:49:29.178261+00	2026-10-10 09:49:29.178261+00
-806	Rolling in the Deep	rolling in the deep | mira grant	2015	123	Novel	Adult	English	Teal	Series	f	t	f	2026-10-10 09:49:29.185839+00	2026-10-10 09:49:29.185839+00
-807	King and the Dragonflies	king and the dragonflies | kacen callender	2020	272	Novel	Middle-grade	English	Green	Standalone	t	t	f	2026-10-10 09:49:29.250515+00	2026-10-10 09:49:29.250515+00
-808	Upright Women Wanted	upright women wanted | sarah gailey	2020	176	Novel	Adult	English	Teal	Standalone	f	t	f	2026-10-10 09:49:29.277801+00	2026-10-10 09:49:29.277801+00
-809	Vengeful	vengeful | v. e. schwab	2018	462	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:29.285978+00	2026-10-10 09:49:29.285978+00
-810	The Woman in the Window	the woman in the window | a. j. finn	2018	434	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:29.356809+00	2026-10-10 09:49:29.356809+00
-811	The Poet X	the poet x | elizabeth acevedo	2018	368	Verse	Young adult	English	White	Standalone	t	f	f	2026-10-10 09:49:29.387567+00	2026-10-10 09:49:29.387567+00
-812	The Wife Between Us	the wife between us | greer hendricks; sarah pekkanen	2018	351	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:29.452783+00	2026-10-10 09:49:29.452783+00
-813	The Guest List	the guest list | lucy foley	2020	320	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:29.48767+00	2026-10-10 09:49:29.48767+00
-814	Dear Martin	dear martin | nic stone	2017	196	Novel	Young adult	English	White	Standalone	t	f	f	2026-10-10 09:49:29.553981+00	2026-10-10 09:49:29.553981+00
-815	Be Not Far From Me	be not far from me | mindy mcginnis	2020	240	Novel	Young adult	English	White	Standalone	f	f	f	2026-10-10 09:49:29.577735+00	2026-10-10 09:49:29.577735+00
-816	The Kind Worth Killing	the kind worth killing | peter swanson	2015	303	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:29.584517+00	2026-10-10 09:49:29.584517+00
-817	SLAY	slay | brittney morris	2019	323	Novel	Young adult	English	White	Standalone	t	f	f	2026-10-10 09:49:29.674024+00	2026-10-10 09:49:29.674024+00
-818	The Deep	the deep | rivers solomon	2019	166	Novel	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:49:29.695573+00	2026-10-10 09:49:29.695573+00
-819	All Boys Aren't Blue	all boys aren't blue | george m. johnson	2020	304	Memoir	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:49:29.754401+00	2026-10-10 09:49:29.754401+00
-820	The Black Flamingo	the black flamingo | dean atta	2019	360	Verse	Young adult	English	Black	Standalone	t	t	f	2026-10-10 09:49:29.777357+00	2026-10-10 09:49:29.777357+00
-821	You Should See Me In a Crown	you should see me in a crown | leah johnson	2020	328	Novel	Young adult	English	Purple	Standalone	t	t	f	2026-10-10 09:49:29.798778+00	2026-10-10 09:49:29.798778+00
-822	Behind Closed Doors	behind closed doors | b. a. paris	2016	263	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:29.869872+00	2026-10-10 09:49:29.869872+00
-823	Beach Read	beach read | emily henry	2020	361	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:29.896428+00	2026-10-10 09:49:29.896428+00
-824	They Both Die at the End	they both die at the end | adam silvera	2017	368	Novel	Young adult	English	Purple	Standalone	t	t	f	2026-10-10 09:49:29.904099+00	2026-10-10 09:49:29.904099+00
-825	The Unhoneymooners	the unhoneymooners | christina lauren	2019	400	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:29.976259+00	2026-10-10 09:49:29.976259+00
-826	The Henna Wars	the henna wars | adiba jaigirdar	2020	400	Novel	Young adult	English	Pink	Standalone	t	t	f	2026-10-10 09:49:29.9991+00	2026-10-10 09:49:29.9991+00
-827	The Cry	the cry | helen fitzgerald	2012	257	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.066125+00	2026-10-10 09:49:30.066125+00
-828	The Southern Book Club's Guide to Slaying Vampires	the southern book club's guide to slaying vampires | grady hendrix	2020	400	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:30.163808+00	2026-10-10 09:49:30.163808+00
-829	In a Dark, Dark Wood	in a dark, dark wood | ruth ware	2015	325	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.187044+00	2026-10-10 09:49:30.187044+00
-830	Home Before Dark	home before dark | riley sager	2020	384	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:30.272943+00	2026-10-10 09:49:30.272943+00
-831	Last to Die	last to die | tess gerritsen	2012	346	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:49:30.357937+00	2026-10-10 09:49:30.357937+00
-832	As Long As We Both Shall Live	as long as we both shall live | joann chaney	2018	359	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:30.380684+00	2026-10-10 09:49:30.380684+00
-833	Every Heart a Doorway	every heart a doorway | seanan mcguire	2016	173	Novel	Young adult	English	Brown	Series	t	t	f	2026-10-10 09:49:30.474175+00	2026-10-10 09:49:30.474175+00
-834	The Last Flight	the last flight | julie clark	2020	288	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:30.495582+00	2026-10-10 09:49:30.495582+00
-835	Carrie	carrie | stephen king	1974	242	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:30.55407+00	2026-10-10 09:49:30.55407+00
-836	Mexican Gothic	mexican gothic | silvia moreno-garcia	2020	320	Novel	Adult	English	Green	Standalone	t	f	f	2026-10-10 09:49:30.583055+00	2026-10-10 09:49:30.583055+00
-837	Twilight	twilight | stephenie meyer	2005	404	Novel	Young adult	English	Black	Series	f	f	f	2026-10-10 09:49:30.653669+00	2026-10-10 09:49:30.653669+00
-838	Clap When You Land	clap when you land | elizabeth acevedo	2020	417	Verse	Young adult	English	Multicolor	Standalone	t	f	f	2026-10-10 09:49:30.661669+00	2026-10-10 09:49:30.661669+00
-839	Good Me, Bad Me	good me, bad me | ali land	2017	320	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:30.690799+00	2026-10-10 09:49:30.690799+00
-840	Loveboat, Taipei	loveboat, taipei | abigail hing wen	2020	432	Novel	Young adult	English	Black	Series	t	f	f	2026-10-10 09:49:30.767804+00	2026-10-10 09:49:30.767804+00
-841	One to Watch	one to watch | kate stayman-london	2020	432	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.789257+00	2026-10-10 09:49:30.789257+00
-842	Bring Me Back	bring me back | b. a. paris	2018	267	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:30.796321+00	2026-10-10 09:49:30.796321+00
-843	Gemina	gemina | amie kaufman; jay kristoff	2016	659	Novel	Young adult	English	Blue	Series	t	f	f	2026-10-10 09:49:30.803581+00	2026-10-10 09:49:30.803581+00
-844	Follow Me to Ground	follow me to ground | sue rainsford	2018	208	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.889465+00	2026-10-10 09:49:30.889465+00
-845	Wild at Heart	wild at heart | k. a. tucker	2020	456	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:30.896573+00	2026-10-10 09:49:30.896573+00
-846	Pines	pines | blake crouch	2012	299	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:30.953544+00	2026-10-10 09:49:30.953544+00
-847	All Your Twisted Secrets	all your twisted secrets | diana urban	2020	400	Novel	Young adult	English	White	Standalone	f	t	f	2026-10-10 09:49:30.974655+00	2026-10-10 09:49:30.974655+00
-848	Down Among the Sticks and Bones	down among the sticks and bones | seanan mcguire	2017	187	Novel	Young adult	English	Black	Series	f	t	f	2026-10-10 09:49:30.982046+00	2026-10-10 09:49:30.982046+00
-849	Salt to the Sea	salt to the sea | ruta sepetys	2016	342	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:31.010431+00	2026-10-10 09:49:31.010431+00
-850	The Falling in Love Montage	the falling in love montage | ciara smyth	2020	368	Novel	Young adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:31.073683+00	2026-10-10 09:49:31.073683+00
-851	Beneath the Sugar Sky	beneath the sugar sky | seanan mcguire	2018	174	Novel	Young adult	English	Pink	Series	t	t	f	2026-10-10 09:49:31.081707+00	2026-10-10 09:49:31.081707+00
-852	Clown in a Cornfield	clown in a cornfield | adam cesare	2020	352	Novel	Young adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:31.154771+00	2026-10-10 09:49:31.154771+00
-853	The Woman in Cabin 10	the woman in cabin 10 | ruth ware	2016	351	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:31.163531+00	2026-10-10 09:49:31.163531+00
-854	Undercover Bromance	undercover bromance | lyssa kay adams	2020	320	Novel	Adult	English	Yellow	Series	t	f	f	2026-10-10 09:49:31.193652+00	2026-10-10 09:49:31.193652+00
-855	Freshwater	freshwater | akwaeke emezi	2018	229	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:49:31.269457+00	2026-10-10 09:49:31.269457+00
-856	My Dark Vanessa	my dark vanessa | kate elizabeth russell	2020	373	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:31.293447+00	2026-10-10 09:49:31.293447+00
-857	Something in the Water	something in the water | catherine steadman	2018	366	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:31.368812+00	2026-10-10 09:49:31.368812+00
-858	It	it | stephen king	1986	1376	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:49:31.376327+00	2026-10-10 09:49:31.376327+00
-859	The Shadows	the shadows | alex north	2020	336	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:31.450532+00	2026-10-10 09:49:31.450532+00
-860	The Death of Mrs. Westaway	the death of mrs. westaway | ruth ware	2018	381	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:31.459396+00	2026-10-10 09:49:31.459396+00
-861	Wonderland	wonderland | zoje stage	2020	354	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:31.46705+00	2026-10-10 09:49:31.46705+00
-862	Kill Creek	kill creek | scott thomas	2017	416	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:31.502502+00	2026-10-10 09:49:31.502502+00
-863	When No One is Watching	when no one is watching | alyssa cole	2020	368	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:31.569841+00	2026-10-10 09:49:31.569841+00
-864	Grad zvijeri	grad zvijeri | andrea tomić	2019	321	Novel	Adult	Croatian	Blue	Standalone	f	f	f	2026-10-10 09:49:31.592538+00	2026-10-10 09:49:31.592538+00
-865	Blue Lily, Lily Blue	blue lily, lily blue | maggie stiefvater	2014	381	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:31.652882+00	2026-10-10 09:49:31.652882+00
-866	Survivor Song	survivor song | paul tremblay	2020	320	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:31.684811+00	2026-10-10 09:49:31.684811+00
-867	Felix Ever After	felix ever after | kacen callender	2020	368	Novel	Young adult	English	Orange	Standalone	t	t	f	2026-10-10 09:49:31.693347+00	2026-10-10 09:49:31.693347+00
-868	Malorie	malorie | josh malerman	2020	301	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:31.769498+00	2026-10-10 09:49:31.769498+00
-869	The Sun Down Motel	the sun down motel | simone st. james	2020	389	Novel	Adult	English	Multicolor	Standalone	f	f	f	2026-10-10 09:49:31.793735+00	2026-10-10 09:49:31.793735+00
-870	The Hollow Places	the hollow places | t. kingfisher	2020	352	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:31.869801+00	2026-10-10 09:49:31.869801+00
-871	In a Holidaze	in a holidaze | christina lauren	2020	336	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:31.878424+00	2026-10-10 09:49:31.878424+00
-872	One by One	one by one | ruth ware	2020	372	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:31.886595+00	2026-10-10 09:49:31.886595+00
-873	I'm Thinking of Ending Things	i'm thinking of ending things | iain reid	2016	210	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:31.984899+00	2026-10-10 09:49:31.984899+00
-874	The Raven King	the raven king | maggie stiefvater	2016	438	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:31.99333+00	2026-10-10 09:49:31.99333+00
-875	Layla	layla | colleen hoover	2020	301	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:32.001179+00	2026-10-10 09:49:32.001179+00
-876	Faking It	faking it | cora carmack	2013	271	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:32.0849+00	2026-10-10 09:49:32.0849+00
-877	NOS4A2	nos4a2 | joe hill	2013	575	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:32.107355+00	2026-10-10 09:49:32.107355+00
-878	Sleigh Bells in the Snow	sleigh bells in the snow | sarah morgan	2013	297	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:32.171156+00	2026-10-10 09:49:32.171156+00
-879	In the Dream House	in the dream house | carmen maria machado	2019	251	Memoir	Adult	English	Green	Standalone	t	t	f	2026-10-10 09:49:32.196527+00	2026-10-10 09:49:32.196527+00
-880	The Quality of Silence	the quality of silence | rosamund lupton	2015	292	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:32.372681+00	2026-10-10 09:49:32.372681+00
-881	The Thousandth Floor	the thousandth floor | katherine mcgee	2016	385	Novel	Young adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:32.450494+00	2026-10-10 09:49:32.450494+00
-882	Written in the Stars	written in the stars | alexandria bellefleur	2020	384	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:32.473371+00	2026-10-10 09:49:32.473371+00
-883	Beartown	beartown | fredrik backman	2016	439	Novel	Adult	Swedish	Blue	Series	f	f	f	2026-10-10 09:49:32.496958+00	2026-10-10 09:49:32.496958+00
-884	The Cousins	the cousins | karen m. mcmanus	2020	337	Novel	Young adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:32.556976+00	2026-10-10 09:49:32.556976+00
-885	The Boy in the Headlights	the boy in the headlights | samuel bjørk	2018	423	Novel	Adult	Norwegian	Black	Series	f	f	f	2026-10-10 09:49:32.588616+00	2026-10-10 09:49:32.588616+00
-886	Darling Rose Gold	darling rose gold | stephanie wrobel	2020	307	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:32.659843+00	2026-10-10 09:49:32.659843+00
-887	The Wrong Family	the wrong family | tarryn fisher	2020	336	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:32.676937+00	2026-10-10 09:49:32.676937+00
-888	O ljubavi, spletkama i svemu pomalo	o ljubavi, spletkama i svemu pomalo | vlasta golub	2016	144	Novel	Young adult	Croatian	White	Standalone	f	f	f	2026-10-10 09:49:32.778199+00	2026-10-10 09:49:32.778199+00
-889	The Dazzling Heights	the dazzling heights | katherine mcgee	2017	364	Novel	Young adult	English	Blue	Series	f	f	f	2026-10-10 09:49:32.78641+00	2026-10-10 09:49:32.78641+00
-890	Heart Bones	heart bones | colleen hoover	2020	338	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:32.794254+00	2026-10-10 09:49:32.794254+00
-891	The Ex Talk	the ex talk | rachel lynn solomon	2021	336	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:32.879087+00	2026-10-10 09:49:32.879087+00
-892	The Whisper Man	the whisper man | alex north	2018	321	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:32.887215+00	2026-10-10 09:49:32.887215+00
-893	Black Eyed Susans	black eyed susans | julia heaberlin	2015	359	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:32.965775+00	2026-10-10 09:49:32.965775+00
-894	Beautiful Bastard	beautiful bastard | christina lauren	2013	252	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:32.975772+00	2026-10-10 09:49:32.975772+00
-895	Crazy Stupid Bromance	crazy stupid bromance | lyssa kay adams	2020	342	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:32.985285+00	2026-10-10 09:49:32.985285+00
-896	The Towering Sky	the towering sky | katherine mcgee	2018	388	Novel	Young adult	English	Pink	Series	f	f	f	2026-10-10 09:49:33.054948+00	2026-10-10 09:49:33.054948+00
-897	Pet	pet | akwaeke emezi	2019	208	Novel	Middle-grade	English	Pink	Standalone	t	t	f	2026-10-10 09:49:33.068621+00	2026-10-10 09:49:33.068621+00
-898	Beautiful Bitch	beautiful bitch | christina lauren	2013	175	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:33.154631+00	2026-10-10 09:49:33.154631+00
-899	Behind Her Eyes	behind her eyes | sarah pinborough	2016	353	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:33.164498+00	2026-10-10 09:49:33.164498+00
-900	The Cavern	the cavern | alister hodge	2019	207	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:33.310608+00	2026-10-10 09:49:33.310608+00
-901	The Kiss Quotient	the kiss quotient | helen hoang	2018	290	Novel	Adult	English	Teal	Series	t	f	f	2026-10-10 09:49:33.354206+00	2026-10-10 09:49:33.354206+00
-902	The Seven Husbands of Evelyn Hugo	the seven husbands of evelyn hugo | taylor jenkins reid	2017	416	Novel	Adult	English	Green	Standalone	t	t	f	2026-10-10 09:49:33.386206+00	2026-10-10 09:49:33.386206+00
-903	These Witches Don't Burn	these witches don't burn | isabel sterling	2019	336	Novel	Young adult	English	Purple	Series	f	t	f	2026-10-10 09:49:33.473986+00	2026-10-10 09:49:33.473986+00
-904	Elevation	elevation | stephen king	2018	146	Novella	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:33.5523+00	2026-10-10 09:49:33.5523+00
-905	Beautiful Stranger	beautiful stranger | christina lauren	2013	279	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:33.568895+00	2026-10-10 09:49:33.568895+00
-906	In an Absent Dream	in an absent dream | seanan mcguire	2019	187	Novella	Young adult	English	Teal	Series	f	f	f	2026-10-10 09:49:33.58785+00	2026-10-10 09:49:33.58785+00
-907	Binti	binti | nnedi okorafor	2015	96	Novella	Young adult	English	Brown	Series	t	f	f	2026-10-10 09:49:33.719475+00	2026-10-10 09:49:33.719475+00
-908	Beautiful Bombshell	beautiful bombshell | christina lauren	2013	173	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:33.758029+00	2026-10-10 09:49:33.758029+00
-909	The Idea of You	the idea of you | robinne lee	2017	372	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:33.856369+00	2026-10-10 09:49:33.856369+00
-910	Black Sun	black sun | rebecca roanhorse	2020	454	Novel	Adult	English	Black	Series	t	t	f	2026-10-10 09:49:33.889435+00	2026-10-10 09:49:33.889435+00
-911	Heart-Shaped Box	heart-shaped box | joe hill	2007	265	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:33.957615+00	2026-10-10 09:49:33.957615+00
-912	99 Percent Mine	99 percent mine | sally thorne	2019	295	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:34.055874+00	2026-10-10 09:49:34.055874+00
-913	The Heart's Invisible Furies	the heart's invisible furies | john boyne	2017	582	Novel	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:49:34.093294+00	2026-10-10 09:49:34.093294+00
-914	Circe	circe | madeline miller	2018	347	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:34.155426+00	2026-10-10 09:49:34.155426+00
-915	Every Vow You Break	every vow you break | peter swanson	2021	308	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:34.168635+00	2026-10-10 09:49:34.168635+00
-916	The Colour of Bee Larkham's Murder	the colour of bee larkham's murder | sarah j. harris	2018	371	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:34.284259+00	2026-10-10 09:49:34.284259+00
-917	The Thursday Murder Club	the thursday murder club | richard osman	2020	324	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:34.35602+00	2026-10-10 09:49:34.35602+00
-918	The Golden Cage	the golden cage | camilla läckberg	2019	290	Novel	Adult	Swedish	Pink	Series	f	f	f	2026-10-10 09:49:34.454764+00	2026-10-10 09:49:34.454764+00
-919	A House at the Bottom of the Lake	a house at the bottom of the lake | josh malerman	2016	118	Novella	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:34.465482+00	2026-10-10 09:49:34.465482+00
-920	They Never Learn	they never learn | layne fargo	2020	378	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:49:34.562449+00	2026-10-10 09:49:34.562449+00
-921	31 nogometni teren	31 nogometni teren | matea čvagić prašnjak	2020	335	Novel	Adult	Croatian	Purple	Standalone	f	f	f	2026-10-10 09:49:34.592578+00	2026-10-10 09:49:34.592578+00
-922	The Perfect Child	the perfect child | lucinda berry	2019	365	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:34.694313+00	2026-10-10 09:49:34.694313+00
-923	Broken Things	broken things | lauren oliver	2018	408	Novel	Young adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:34.782496+00	2026-10-10 09:49:34.782496+00
-924	The Push	the push | ashley audrain	2021	307	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:34.858954+00	2026-10-10 09:49:34.858954+00
-925	Anxious People	anxious people | fredrik backman	2019	357	Novel	Adult	Swedish	Yellow	Standalone	f	t	f	2026-10-10 09:49:34.876551+00	2026-10-10 09:49:34.876551+00
-926	I'm Not Scared	i'm not scared | niccolò ammaniti	2001	225	Novel	Adult	Italian	Beige	Standalone	f	f	f	2026-10-10 09:49:35.039902+00	2026-10-10 09:49:35.039902+00
-927	My Brilliant Friend	my brilliant friend | elena ferrante	2011	349	Novel	Adult	Italian	Gray	Series	f	f	f	2026-10-10 09:49:35.162479+00	2026-10-10 09:49:35.162479+00
-928	Forever Wild	forever wild | k. a. tucker	2020	158	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:35.173881+00	2026-10-10 09:49:35.173881+00
-929	Cesta za Zion	cesta za zion | matea čvagić prašnjak	2018	139	Novella	Adult	Croatian	Pink	Standalone	f	f	f	2026-10-10 09:49:35.189239+00	2026-10-10 09:49:35.189239+00
-930	The Bright Lands	the bright lands | john fram	2020	473	Novel	Adult	English	Purple	Standalone	f	t	f	2026-10-10 09:49:35.501271+00	2026-10-10 09:49:35.501271+00
-931	Cemetery Boys	cemetery boys | aiden thomas	2020	352	Novel	Young adult	English	Pink	Standalone	t	t	f	2026-10-10 09:49:35.528642+00	2026-10-10 09:49:35.528642+00
-932	Malibu Rising	malibu rising | taylor jenkins reid	2021	384	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:35.555821+00	2026-10-10 09:49:35.555821+00
-933	Cuando estuvimos muertos	cuando estuvimos muertos | francesc miralles	2010	351	Novel	Young adult	Spanish	Black	Series	f	f	f	2026-10-10 09:49:35.595667+00	2026-10-10 09:49:35.595667+00
-934	This is Not a Horror Movie	this is not a horror movie | sara dobie bauer	2021	280	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:35.673414+00	2026-10-10 09:49:35.673414+00
-935	The Duke and I	the duke and i | julia quinn	2000	348	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:35.754681+00	2026-10-10 09:49:35.754681+00
-936	Sawkill Girls	sawkill girls | claire legrand	2018	447	Novel	Young adult	English	Gray	Standalone	t	t	f	2026-10-10 09:49:35.782349+00	2026-10-10 09:49:35.782349+00
-937	Misery	misery | stephen king	1987	293	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:35.790971+00	2026-10-10 09:49:35.790971+00
-938	The One	the one | john marrs	2016	437	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:35.883249+00	2026-10-10 09:49:35.883249+00
-939	The Mother-in-Law	the mother-in-law | sally hepworth	2019	316	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:35.971151+00	2026-10-10 09:49:35.971151+00
-940	Lie With Me	lie with me | philippe besson	2017	149	Novella	Adult	French	Gray	Standalone	f	t	f	2026-10-10 09:49:36.054082+00	2026-10-10 09:49:36.054082+00
-941	The Broken Girls	the broken girls | simone st. james	2018	356	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:36.063188+00	2026-10-10 09:49:36.063188+00
-942	My Best Friend's Exorcism	my best friend's exorcism | grady hendrix	2016	337	Novel	Young adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:36.07484+00	2026-10-10 09:49:36.07484+00
-943	The Chalk Man	the chalk man | c. j. tudor	2018	298	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:36.084458+00	2026-10-10 09:49:36.084458+00
-944	Survive the Night	survive the night | riley sager	2021	336	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:36.155426+00	2026-10-10 09:49:36.155426+00
-945	Night of the Mannequins	night of the mannequins | stephen graham jones	2020	136	Novella	Adult	English	Beige	Standalone	t	f	f	2026-10-10 09:49:36.250504+00	2026-10-10 09:49:36.250504+00
-946	The Soulmate Equation	the soulmate equation | christina lauren	2021	368	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:36.260904+00	2026-10-10 09:49:36.260904+00
-947	Losing It	losing it | cora carmack	2012	222	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:36.271169+00	2026-10-10 09:49:36.271169+00
-948	The Surgeon	the surgeon | tess gerritsen	2001	330	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:36.280502+00	2026-10-10 09:49:36.280502+00
-949	Beautiful Player	beautiful player | christina lauren	2013	432	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:36.356437+00	2026-10-10 09:49:36.356437+00
-950	The Final Girl Support Group	the final girl support group | grady hendrix	2021	393	Novel	Adult	English	Red	Standalone	t	t	f	2026-10-10 09:49:36.365641+00	2026-10-10 09:49:36.365641+00
-951	Roomies	roomies | christina lauren	2017	369	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:36.374515+00	2026-10-10 09:49:36.374515+00
-952	One Last Stop	one last stop | casey mcquiston	2021	422	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:36.515691+00	2026-10-10 09:49:36.515691+00
-953	Warcross	warcross | marie lu	2017	353	Novel	Young adult	English	White	Series	t	f	f	2026-10-10 09:49:36.574715+00	2026-10-10 09:49:36.574715+00
-954	Finding It	finding it | cora carmack	2013	259	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:36.58301+00	2026-10-10 09:49:36.58301+00
-955	Finlay Donovan Is Killing It	finlay donovan is killing it | elle cosimano	2021	314	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:36.660322+00	2026-10-10 09:49:36.660322+00
-956	The Flatshare	the flatshare | beth o'leary	2019	414	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:36.68537+00	2026-10-10 09:49:36.68537+00
-957	The Roomate	the roomate | rosie danan	2020	325	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:36.769911+00	2026-10-10 09:49:36.769911+00
-958	Suddenly Last Summer	suddenly last summer | sarah morgan	2014	297	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:36.778718+00	2026-10-10 09:49:36.778718+00
-959	Štorka	štorka | jelena hrvoj	2015	414	Novel	Adult	Croatian	Green	Series	f	f	f	2026-10-10 09:49:36.854207+00	2026-10-10 09:49:36.854207+00
-960	The Taking of Jake Livingston	the taking of jake livingston | ryan douglass	2021	244	Novel	Young adult	English	Teal	Standalone	t	t	f	2026-10-10 09:49:36.880596+00	2026-10-10 09:49:36.880596+00
-961	Beautiful Beginning	beautiful beginning | christina lauren	2013	241	Novella	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:36.950737+00	2026-10-10 09:49:36.950737+00
-962	Birthday Girl	birthday girl | penelope douglas	2018	417	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:36.988364+00	2026-10-10 09:49:36.988364+00
-963	Beautiful Beloved	beautiful beloved | christina lauren	2015	129	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:36.997143+00	2026-10-10 09:49:36.997143+00
-964	The Drowning Kind	the drowning kind | jennifer mcmahon	2021	307	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:37.079205+00	2026-10-10 09:49:37.079205+00
-965	The Long Way to a Small, Angry Planet	the long way to a small, angry planet | becky chambers	2014	415	Novel	Adult	English	Purple	Series	t	t	f	2026-10-10 09:49:37.156165+00	2026-10-10 09:49:37.156165+00
-966	The Invisible Life of Addie Larue	the invisible life of addie larue | v. e. schwab	2020	442	Novel	Adult	English	Brown	Standalone	f	t	f	2026-10-10 09:49:37.165434+00	2026-10-10 09:49:37.165434+00
-967	The Risk	the risk | s. t. abby	2016	105	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:37.270948+00	2026-10-10 09:49:37.270948+00
-968	Doručak	doručak | dinko mihovilović	2021	160	Novella	Adult	Croatian	Beige	Standalone	f	f	f	2026-10-10 09:49:37.350892+00	2026-10-10 09:49:37.350892+00
-969	Things Have Gotten Worse Since We Last Spoke	things have gotten worse since we last spoke | eric larocca	2021	102	Novella	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:37.386704+00	2026-10-10 09:49:37.386704+00
-970	Little Eyes	little eyes | samanta schweblin	2018	207	Novel	Adult	Spanish	White	Standalone	f	f	f	2026-10-10 09:49:37.47374+00	2026-10-10 09:49:37.47374+00
-971	Isn't It Bromantic	isn't it bromantic | lyssa kay adams	2021	350	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:37.483594+00	2026-10-10 09:49:37.483594+00
-972	Get a Life, Chloe Brown	get a life, chloe brown | talia hibbert	2019	369	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:49:37.584134+00	2026-10-10 09:49:37.584134+00
-973	The Tattooist of Auschwitz	the tattooist of auschwitz | heather morris	2017	225	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:37.654834+00	2026-10-10 09:49:37.654834+00
-974	Daisy Jones & The Six	daisy jones & the six | taylor jenkins reid	2019	355	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:37.664559+00	2026-10-10 09:49:37.664559+00
-975	The Hole	the hole | hye young pyun	2016	137	Novella	Adult	Korean	Beige	Standalone	t	f	f	2026-10-10 09:49:37.754608+00	2026-10-10 09:49:37.754608+00
-976	Sidetracked	sidetracked | s. t. abby	2016	95	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:37.765153+00	2026-10-10 09:49:37.765153+00
-977	The Shining	the shining | stephen king	1977	412	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:37.775096+00	2026-10-10 09:49:37.775096+00
-978	The Sanatorium	the sanatorium | sarah pearse	2021	346	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:37.953784+00	2026-10-10 09:49:37.953784+00
-979	Yes, Daddy	yes, daddy | jonathan parks-ramage	2021	282	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:37.980429+00	2026-10-10 09:49:37.980429+00
-980	The Rumor	the rumor | lesley kara	2018	295	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:38.070556+00	2026-10-10 09:49:38.070556+00
-981	The Silent Companions	the silent companions | laura purcell	2017	326	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:38.153199+00	2026-10-10 09:49:38.153199+00
-982	To Be Taught, If Fortunate	to be taught, if fortunate | becky chambers	2019	175	Novella	Adult	English	Orange	Standalone	t	t	f	2026-10-10 09:49:38.162129+00	2026-10-10 09:49:38.162129+00
-983	Project Hail Mary	project hail mary | andy weir	2021	486	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:38.250544+00	2026-10-10 09:49:38.250544+00
-984	Believe Me	believe me | j. p. delaney	2018	360	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:38.285588+00	2026-10-10 09:49:38.285588+00
-985	The Maidens	the maidens | alex michaelides	2021	337	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:38.372889+00	2026-10-10 09:49:38.372889+00
-986	Resin	resin | ane riel	2018	246	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:38.453967+00	2026-10-10 09:49:38.453967+00
-987	The Patient	the patient | jasper dewitt	2020	224	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:38.482678+00	2026-10-10 09:49:38.482678+00
-988	The Arrangement	the arrangement | kiersten modglin	2021	228	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:38.571803+00	2026-10-10 09:49:38.571803+00
-989	In My Dreams I Hold a Knife	in my dreams i hold a knife | ashley winstead	2021	329	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:38.655877+00	2026-10-10 09:49:38.655877+00
-990	The Package	the package | sebastian fitzek	2016	277	Novel	Adult	German	Beige	Standalone	f	f	f	2026-10-10 09:49:38.752854+00	2026-10-10 09:49:38.752854+00
-991	Radiance	radiance | grace draven	2014	297	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:49:38.785683+00	2026-10-10 09:49:38.785683+00
-992	House of Hollow	house of hollow | krystal sutherland	2021	292	Novel	Young adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:38.871685+00	2026-10-10 09:49:38.871685+00
-993	Rock, Paper, Scissors	rock, paper, scissors | alice feeney	2021	310	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:38.960944+00	2026-10-10 09:49:38.960944+00
-994	56 Days	56 days | catherine ryan howard	2021	305	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:39.055436+00	2026-10-10 09:49:39.055436+00
-995	Volja	volja | mana pass	2021	253	Novel	Adult	Croatian	Red	Series	f	f	f	2026-10-10 09:49:39.080355+00	2026-10-10 09:49:39.080355+00
-996	The Love Hypothesis	the love hypothesis | ali hazelwood	2021	352	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:39.175244+00	2026-10-10 09:49:39.175244+00
-997	For Your Own Good	for your own good | samantha downing	2021	347	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:39.254089+00	2026-10-10 09:49:39.254089+00
-998	Falling	falling | t. j. newman	2021	270	Novel	Adult	English	Multicolor	Standalone	f	f	f	2026-10-10 09:49:39.282476+00	2026-10-10 09:49:39.282476+00
-999	False Witness	false witness | karin slaughter	2021	435	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:39.370945+00	2026-10-10 09:49:39.370945+00
-1000	Beautiful Secret	beautiful secret | christina lauren	2015	307	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:39.453822+00	2026-10-10 09:49:39.453822+00
-1001	Near the Bone	near the bone | christina henry	2021	336	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:39.493964+00	2026-10-10 09:49:39.493964+00
-1002	The Whispering Dead	the whispering dead | darcy coates	2021	256	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:39.573157+00	2026-10-10 09:49:39.573157+00
-1003	Dark Lover	dark lover | j.r. ward	2005	455	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:39.674108+00	2026-10-10 09:49:39.674108+00
-1004	The Wife Upstairs	the wife upstairs | rachel hawkins	2021	290	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:39.760482+00	2026-10-10 09:49:39.760482+00
-1005	The Last House on Needless Street	the last house on needless street | catriona ward	2021	363	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:39.857214+00	2026-10-10 09:49:39.857214+00
-1006	Window Shopping	window shopping | tessa bailey	2021	258	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:39.887898+00	2026-10-10 09:49:39.887898+00
-1007	Dipped in Holly	dipped in holly | dana isaly	2021	55	Novella	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:39.977526+00	2026-10-10 09:49:39.977526+00
-1008	Maybe This Christmas	maybe this christmas | sarah morgan	2014	336	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:40.053162+00	2026-10-10 09:49:40.053162+00
-1009	Scarlet Angel	scarlet angel | s. t. abby	2016	114	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:40.064017+00	2026-10-10 09:49:40.064017+00
-1010	Stolen Tongues	stolen tongues | felix blackwell	2017	298	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:40.155769+00	2026-10-10 09:49:40.155769+00
-1011	A Psalm for the Wild-Built	a psalm for the wild-built | becky chambers	2021	131	Novella	Adult	English	Green	Series	f	t	f	2026-10-10 09:49:40.16632+00	2026-10-10 09:49:40.16632+00
-1012	A Noise Downstairs	a noise downstairs | linwood barclay	2018	356	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:40.278769+00	2026-10-10 09:49:40.278769+00
-1013	The Maid	the maid | nita prose	2022	304	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:40.377904+00	2026-10-10 09:49:40.377904+00
-1014	Weather Girl	weather girl | rachel lynn solomon	2022	352	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:40.455534+00	2026-10-10 09:49:40.455534+00
-1015	Where They Wait	where they wait | scott carson	2021	359	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:40.555876+00	2026-10-10 09:49:40.555876+00
-1016	Ice Planet Barbarians	ice planet barbarians | ruby dixon	2015	188	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:40.656559+00	2026-10-10 09:49:40.656559+00
-1017	Comfort Me With Apples	comfort me with apples | catherynne m. valente	2021	103	Novella	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:40.756145+00	2026-10-10 09:49:40.756145+00
-1018	Games We Play	games we play | dana isaly	2021	90	Novella	Adult	English	Purple	Series	f	f	f	2026-10-10 09:49:40.769421+00	2026-10-10 09:49:40.769421+00
-1019	Secrets We Hunt	secrets we hunt | dana isaly	2022	72	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:40.853532+00	2026-10-10 09:49:40.853532+00
-1020	These Silent Woods	these silent woods | kimi cunningham grant	2021	239	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:40.953036+00	2026-10-10 09:49:40.953036+00
-1021	Reminders of Him	reminders of him | colleen hoover	2022	327	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:40.96401+00	2026-10-10 09:49:40.96401+00
-1022	Claimed By Cupid	claimed by cupid | dana isaly	2022	63	Novella	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:40.975678+00	2026-10-10 09:49:40.975678+00
-1023	Under One Roof	under one roof | ali hazelwood	2022	112	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:41.062882+00	2026-10-10 09:49:41.062882+00
-1024	Eyeshot	eyeshot | taylor adams	2014	287	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:41.153527+00	2026-10-10 09:49:41.153527+00
-1025	Hang the Moon	hang the moon | alexandria bellefleur	2021	364	Novel	Adult	English	Purple	Series	f	t	f	2026-10-10 09:49:41.162815+00	2026-10-10 09:49:41.162815+00
-1026	Stuck With You	stuck with you | ali hazelwood	2022	127	Novella	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:41.174928+00	2026-10-10 09:49:41.174928+00
-1027	Dead Silence	dead silence | s. a. barnes	2022	343	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:41.315546+00	2026-10-10 09:49:41.315546+00
-1028	Scream For Us	scream for us | molly doyle	2021	84	Novella	Adult	English	Purple	Series	f	f	f	2026-10-10 09:49:41.355414+00	2026-10-10 09:49:41.355414+00
-1029	The Man Who Died Twice	the man who died twice | richard osman	2021	324	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:41.365982+00	2026-10-10 09:49:41.365982+00
-1030	All the Lies	all the lies | s. t. abby	2016	141	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:41.453881+00	2026-10-10 09:49:41.453881+00
-1031	Below Zero	below zero | ali hazelwood	2022	139	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:41.467413+00	2026-10-10 09:49:41.467413+00
-1032	Chef's Kiss	chef's kiss | tj alexander	2022	320	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:41.579522+00	2026-10-10 09:49:41.579522+00
-1033	Hide	hide | kiersten white	2022	256	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:41.674249+00	2026-10-10 09:49:41.674249+00
-1034	Before I Go To Sleep	before i go to sleep | s. j. watson	2011	288	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:41.782055+00	2026-10-10 09:49:41.782055+00
-1035	My Killer Vacation	my killer vacation | tessa bailey	2022	290	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:41.855293+00	2026-10-10 09:49:41.855293+00
-1036	The Butterfly Garden	the butterfly garden | dot hutchison	2016	285	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:41.953028+00	2026-10-10 09:49:41.953028+00
-1037	People We Meet on Vacation	people we meet on vacation | emily henry	2021	361	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:41.974798+00	2026-10-10 09:49:41.974798+00
-1038	Bath Haus	bath haus | p. j. vernon	2021	312	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:42.105797+00	2026-10-10 09:49:42.105797+00
-1039	The Troop	the troop | nick cutter	2014	355	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:42.198776+00	2026-10-10 09:49:42.198776+00
-1040	Petrified Women	petrified women | jeremy ray	2021	91	Novella	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:42.282607+00	2026-10-10 09:49:42.282607+00
-1041	We Were the Lucky Ones	we were the lucky ones | georgia hunter	2017	452	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:42.388633+00	2026-10-10 09:49:42.388633+00
-1042	He Started It	he started it | samantha downing	2020	377	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:42.461144+00	2026-10-10 09:49:42.461144+00
-1043	Patricia Wants to Cuddle	patricia wants to cuddle | samantha allen	2022	220	Novel	Adult	English	Teal	Standalone	f	t	f	2026-10-10 09:49:42.566627+00	2026-10-10 09:49:42.566627+00
-1044	Carrie Soto is Back	carrie soto is back | taylor jenkins reid	2022	364	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:49:42.578714+00	2026-10-10 09:49:42.578714+00
-1045	Cursed Bunny	cursed bunny | bora chung	2017	251	Short stories	Adult	Korean	Purple	Standalone	t	f	f	2026-10-10 09:49:42.779888+00	2026-10-10 09:49:42.779888+00
-1046	Fever Dream	fever dream | samanta schweblin	2017	151	Novella	Adult	Spanish	Brown	Standalone	f	f	f	2026-10-10 09:49:42.797575+00	2026-10-10 09:49:42.797575+00
-1047	Horrorstör	horrorstör | grady hendrix	2014	248	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:42.86721+00	2026-10-10 09:49:42.86721+00
-1048	Crossroads	crossroads | laurel hightower	2020	115	Novella	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:42.98886+00	2026-10-10 09:49:42.98886+00
-1049	Horseman	horseman | christina henry	2021	347	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:43.055862+00	2026-10-10 09:49:43.055862+00
-1050	A Flicker in the Dark	a flicker in the dark | stacy willingham	2022	337	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:43.156572+00	2026-10-10 09:49:43.156572+00
-1051	We Need to Do Something	we need to do something | max booth iii	2020	160	Novella	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:43.25706+00	2026-10-10 09:49:43.25706+00
-1052	Kiss Her Once for Me	kiss her once for me | alison cochrun	2022	368	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:43.354507+00	2026-10-10 09:49:43.354507+00
-1053	The Visitor	the visitor | sergio gomez	2020	64	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:43.454292+00	2026-10-10 09:49:43.454292+00
-1054	Pretty Girls	pretty girls | karin slaughter	2015	442	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:43.467794+00	2026-10-10 09:49:43.467794+00
-1055	Paint It All Red	paint it all red | s. t. abby	2016	176	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:43.556061+00	2026-10-10 09:49:43.556061+00
-1056	Sign Here	sign here | claudia lux	2022	390	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:43.656033+00	2026-10-10 09:49:43.656033+00
-1057	Ghost 19	ghost 19 | simone st. james	2023	109	Novella	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:43.669574+00	2026-10-10 09:49:43.669574+00
-1058	Wonderland	wonderland | jennifer hilier	2015	343	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:43.782102+00	2026-10-10 09:49:43.782102+00
-1059	And Then I Woke Up	and then i woke up | malcolm devlin	2022	127	Novella	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:43.874642+00	2026-10-10 09:49:43.874642+00
-1060	Kuća slomljenih lutaka	kuća slomljenih lutaka | vladimira becić	2017	549	Novel	Adult	Croatian	Black	Standalone	f	f	f	2026-10-10 09:49:43.954926+00	2026-10-10 09:49:43.954926+00
-1061	Finlay Donovan Knocks 'Em Dead	finlay donovan knocks 'em dead | elle cosimano	2022	357	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:43.965202+00	2026-10-10 09:49:43.965202+00
-1062	Sparrow	sparrow | l. j. shen	2016	344	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:44.065966+00	2026-10-10 09:49:44.065966+00
-1063	Nana	nana | brandon massey	2018	246	Novel	Adult	English	Green	Standalone	t	f	f	2026-10-10 09:49:44.155831+00	2026-10-10 09:49:44.155831+00
-1064	Take a Hint, Dani Brown	take a hint, dani brown | talia hibbert	2020	361	Novel	Adult	English	Yellow	Series	t	f	f	2026-10-10 09:49:44.165482+00	2026-10-10 09:49:44.165482+00
-1065	The Long Walk	the long walk | stephen king	1979	270	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:44.174943+00	2026-10-10 09:49:44.174943+00
-1066	Confessions	confessions | kanae minato	2008	234	Novel	Adult	Japanese	Red	Standalone	t	f	f	2026-10-10 09:49:44.293031+00	2026-10-10 09:49:44.293031+00
-1067	Finna	finna | nino cipri	2020	90	Novella	Adult	English	Blue	Series	t	t	f	2026-10-10 09:49:44.370614+00	2026-10-10 09:49:44.370614+00
-1068	The House Guest	the house guest | mark edwards	2020	287	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:44.481941+00	2026-10-10 09:49:44.481941+00
-1069	How to Sell a Haunted House	how to sell a haunted house | grady hendrix	2023	398	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:44.554089+00	2026-10-10 09:49:44.554089+00
-1070	The House Across the Lake	the house across the lake | riley sager	2022	349	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:44.563836+00	2026-10-10 09:49:44.563836+00
-1071	The Spite House	the spite house | johnny compton	2023	261	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:49:44.675808+00	2026-10-10 09:49:44.675808+00
-1072	Secretly Yours	secretly yours | tessa bailey	2023	384	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:44.68792+00	2026-10-10 09:49:44.68792+00
-1073	The Writing Retreat	the writing retreat | julia bartz	2023	313	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:44.790146+00	2026-10-10 09:49:44.790146+00
-1074	The Couple Next Door	the couple next door | shari lapena	2016	289	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:44.877333+00	2026-10-10 09:49:44.877333+00
-1075	Exes and O's	exes and o's | amy lea	2023	361	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:44.957123+00	2026-10-10 09:49:44.957123+00
-1076	So Happy For You	so happy for you | celia laskey	2022	300	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:45.059015+00	2026-10-10 09:49:45.059015+00
-1077	Several People Are Typing	several people are typing | calvin kasulke	2021	219	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:45.153048+00	2026-10-10 09:49:45.153048+00
-1079	What Lies in the Woods	what lies in the woods | kate alice marshall	2023	322	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:45.25525+00	2026-10-10 09:49:45.25525+00
-1080	What Moves the Dead	what moves the dead | t. kingfisher	2022	169	Novella	Adult	English	Green	Series	f	t	f	2026-10-10 09:49:45.26496+00	2026-10-10 09:49:45.26496+00
-1081	The Girl in 6E	the girl in 6e | a. r. torre	2014	336	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:45.363118+00	2026-10-10 09:49:45.363118+00
-1082	Every Single Secret	every single secret | emily carpenter	2018	306	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:45.452676+00	2026-10-10 09:49:45.452676+00
-1083	Whisper Down the Lane	whisper down the lane | clay mcleod chapman	2021	316	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:45.482438+00	2026-10-10 09:49:45.482438+00
-1084	Do Not Disturb	do not disturb | a. r. torre	2015	357	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:45.556006+00	2026-10-10 09:49:45.556006+00
-1085	Sweethand	sweethand | n. g. peltier	2021	305	Novel	Adult	English	Orange	Series	t	f	f	2026-10-10 09:49:45.65492+00	2026-10-10 09:49:45.65492+00
-1086	The Last Word	the last word | taylor adams	2023	358	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:45.667736+00	2026-10-10 09:49:45.667736+00
-1087	Not a Happy Family	not a happy family | shari lapena	2021	429	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:45.678086+00	2026-10-10 09:49:45.678086+00
-1088	Square³	square³ | mira grant	2021	144	Novella	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:45.756143+00	2026-10-10 09:49:45.756143+00
-1089	If You Dare	if you dare | a. r. torre	2015	368	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:45.76776+00	2026-10-10 09:49:45.76776+00
-1090	Then She Was Gone	then she was gone | lisa jewell	2017	320	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:45.953979+00	2026-10-10 09:49:45.953979+00
-1091	A Closed and Common Orbit	a closed and common orbit | becky chambers	2016	364	Novel	Adult	English	Red	Series	t	t	f	2026-10-10 09:49:45.964548+00	2026-10-10 09:49:45.964548+00
-1092	An Elderly Lady Is Up to No Good	an elderly lady is up to no good | helene tursten	2013	93	Short stories	Adult	Swedish	Beige	Series	f	f	f	2026-10-10 09:49:46.063795+00	2026-10-10 09:49:46.063795+00
-1093	I Must Betray You	i must betray you | ruta sepetys	2022	310	Novel	Young adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.156629+00	2026-10-10 09:49:46.156629+00
-1094	Count Your Lucky Stars	count your lucky stars | alexandria bellefleur	2022	365	Novel	Adult	English	Pink	Series	f	t	f	2026-10-10 09:49:46.170776+00	2026-10-10 09:49:46.170776+00
-1095	Children on the Hill	children on the hill | jennifer mcmahon	2022	338	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.255082+00	2026-10-10 09:49:46.255082+00
-1096	The Perfect Wife	the perfect wife | j. p. delaney	2019	429	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:46.267498+00	2026-10-10 09:49:46.267498+00
-1097	Love and Other Disasters	love and other disasters | anita kelly	2022	384	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:49:46.405831+00	2026-10-10 09:49:46.405831+00
-1098	Looking Glass Sound	looking glass sound | catriona ward	2023	323	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:46.450544+00	2026-10-10 09:49:46.450544+00
-1099	Never Let You Go	never let you go | chevy stevens	2017	356	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.488205+00	2026-10-10 09:49:46.488205+00
-1100	The Soulmate	the soulmate | sally hepworth	2022	269	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.55957+00	2026-10-10 09:49:46.55957+00
-1101	Maeve Fly	maeve fly | c.j. leede	2023	255	Novella	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:46.664251+00	2026-10-10 09:49:46.664251+00
-1102	Consumed	consumed | j.r. ward	2018	419	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:46.675114+00	2026-10-10 09:49:46.675114+00
-1103	Practice Makes Perfect	practice makes perfect | sarah adams	2023	352	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:46.783814+00	2026-10-10 09:49:46.783814+00
-1104	The Trees Grew Because I Bled There	the trees grew because i bled there | eric larocca	2021	202	Short stories	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:46.85409+00	2026-10-10 09:49:46.85409+00
-1105	A Certain Hunger	a certain hunger | chelsea g. summers	2021	317	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:46.955924+00	2026-10-10 09:49:46.955924+00
-1106	Our Last Night	our last night | taylor adams	2015	324	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:46.968035+00	2026-10-10 09:49:46.968035+00
-1107	All the Dangerous Things	all the dangerous things | stacy willingham	2023	326	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:47.055747+00	2026-10-10 09:49:47.055747+00
-1108	Shipped	shipped | angie hockman	2021	321	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:47.157987+00	2026-10-10 09:49:47.157987+00
-1109	Penpal	penpal | dathan auerbach	2012	238	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:47.270065+00	2026-10-10 09:49:47.270065+00
-1110	The Only One Left	the only one left | riley sager	2023	368	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:47.355692+00	2026-10-10 09:49:47.355692+00
-1111	Come Closer	come closer | sara gran	2003	135	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:47.458547+00	2026-10-10 09:49:47.458547+00
-1112	You Let Me In	you let me in | lucy clarke	2018	409	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:47.564069+00	2026-10-10 09:49:47.564069+00
-1113	Our Wives Under the Sea	our wives under the sea | julia armfield	2022	229	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:47.68922+00	2026-10-10 09:49:47.68922+00
-1114	Joyland	joyland | stephen king	2013	283	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:47.721091+00	2026-10-10 09:49:47.721091+00
-1115	It Happened One Summer	it happened one summer | tessa bailey	2021	385	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:47.764927+00	2026-10-10 09:49:47.764927+00
-1116	172 Hours on the Moon	172 hours on the moon | johan harstad	2008	368	Novel	Young adult	Swedish	Black	Standalone	f	f	f	2026-10-10 09:49:47.962834+00	2026-10-10 09:49:47.962834+00
-1117	A Twisted Love Story	a twisted love story | samantha downing	2023	370	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:48.119096+00	2026-10-10 09:49:48.119096+00
-1118	The Calling	the calling | james frey; nils johnson-shelton	2014	415	Novel	Young adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:48.26676+00	2026-10-10 09:49:48.26676+00
-1119	Dead Eleven	dead eleven | jimmy juliano	2023	472	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:48.357925+00	2026-10-10 09:49:48.357925+00
-1120	Follow You Home	follow you home | mark edwards	2015	383	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:48.388525+00	2026-10-10 09:49:48.388525+00
-1121	Broken Dolls	broken dolls | mique watson	2023	113	Novella	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:48.48717+00	2026-10-10 09:49:48.48717+00
-1122	A Head Full of Ghosts	a head full of ghosts | paul tremblay	2015	336	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:48.556647+00	2026-10-10 09:49:48.556647+00
-1123	Hook, Line, and Sinker	hook, line, and sinker | tessa bailey	2022	353	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:48.572073+00	2026-10-10 09:49:48.572073+00
-1124	The Last One	the last one | will dean	2023	400	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:48.755875+00	2026-10-10 09:49:48.755875+00
-1125	Love, Theoretically	love, theoretically | ali hazelwood	2023	407	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:48.767375+00	2026-10-10 09:49:48.767375+00
-1126	Rose Madder	rose madder | stephen king	1995	415	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:48.779062+00	2026-10-10 09:49:48.779062+00
-1127	The Lying Game	the lying game | ruth ware	2017	453	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:48.857802+00	2026-10-10 09:49:48.857802+00
-1128	Good Bad Girl	good bad girl | alice feeney	2023	289	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:48.868815+00	2026-10-10 09:49:48.868815+00
-1129	Whalefall	whalefall | daniel kraus	2023	270	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:49.054912+00	2026-10-10 09:49:49.054912+00
-1130	Role Playing	role playing | cathy yardley	2023	333	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:49.174009+00	2026-10-10 09:49:49.174009+00
-1131	Daisy Darker	daisy darker | alice feeney	2022	336	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:49.2548+00	2026-10-10 09:49:49.2548+00
-1132	BETA: A Technological Nightmare	beta: a technological nightmare | sammy scott	2023	501	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:49.359272+00	2026-10-10 09:49:49.359272+00
-1133	The Bullet That Missed	the bullet that missed | richard osman	2022	324	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:49.453775+00	2026-10-10 09:49:49.453775+00
-1134	We Have Always Lived in the Castle	we have always lived in the castle | shirley jackson	1962	146	Novella	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:49.556939+00	2026-10-10 09:49:49.556939+00
-1135	None of This is True	none of this is true | lisa jewell	2023	384	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:49.571806+00	2026-10-10 09:49:49.571806+00
-1136	The Family Game	the family game | catherine steadman	2022	379	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:49.658976+00	2026-10-10 09:49:49.658976+00
-1137	The Stranger Upstairs	the stranger upstairs | lisa m. matlin	2023	298	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:49.795187+00	2026-10-10 09:49:49.795187+00
-1138	Notes on an Execution	notes on an execution | danya kukafka	2022	306	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:49.953215+00	2026-10-10 09:49:49.953215+00
-1139	Midnight Is the Darkest Hour	midnight is the darkest hour | ashley winstead	2023	349	Novel	Adult	English	Teal	Standalone	f	t	f	2026-10-10 09:49:49.967183+00	2026-10-10 09:49:49.967183+00
-1140	The September House	the september house | carissa orlando	2023	344	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:50.093344+00	2026-10-10 09:49:50.093344+00
-1141	The Last Thing To Burn	the last thing to burn | will dean	2021	242	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:50.164233+00	2026-10-10 09:49:50.164233+00
-1142	Drowning	drowning | t. j. newman	2023	244	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:50.254627+00	2026-10-10 09:49:50.254627+00
-1143	Butcher & Blackbird	butcher & blackbird | brynne weaver	2023	362	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:50.357682+00	2026-10-10 09:49:50.357682+00
-1144	Natural Beauty	natural beauty | ling ling huang	2023	235	Novel	Adult	English	Beige	Standalone	t	f	f	2026-10-10 09:49:50.466257+00	2026-10-10 09:49:50.466257+00
-1145	All Hallows	all hallows | christopher golden	2023	379	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:50.5747+00	2026-10-10 09:49:50.5747+00
-1146	Ankle Snatcher	ankle snatcher | grady hendrix	2023	29	Novella	Adult	English	Blue	Collection	f	f	f	2026-10-10 09:49:50.664258+00	2026-10-10 09:49:50.664258+00
-1147	The Resort	the resort | sarah goodwin	2023	384	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:50.789623+00	2026-10-10 09:49:50.789623+00
-1148	Melt for Us	melt for us | molly doyle	2021	128	Novella	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:50.857939+00	2026-10-10 09:49:50.857939+00
-1149	The Mistletoe Motive	the mistletoe motive | chloe liese	2021	185	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:50.984261+00	2026-10-10 09:49:50.984261+00
-1150	Dead of Winter	dead of winter | darcy coates	2023	341	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:51.055827+00	2026-10-10 09:49:51.055827+00
-1151	Secret Santa	secret santa | andrew shaffer	2020	220	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:51.15707+00	2026-10-10 09:49:51.15707+00
-1152	Lovelight Farms	lovelight farms | b. k. borison	2021	332	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:51.256975+00	2026-10-10 09:49:51.256975+00
-1153	Everyone in My Family Has Killed Someone	everyone in my family has killed someone | benjamin stevenson	2022	367	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:51.37848+00	2026-10-10 09:49:51.37848+00
-1154	The Christmas Guest	the christmas guest | peter swanson	2023	102	Novella	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:51.460676+00	2026-10-10 09:49:51.460676+00
-1155	The Holiday Swap	the holiday swap | maggie knox	2021	330	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:51.593363+00	2026-10-10 09:49:51.593363+00
-1156	Nobody But Us	nobody but us | laure van rensburg	2022	310	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:51.754308+00	2026-10-10 09:49:51.754308+00
-1157	Sour Candy	sour candy | kealan patrick burke	2015	84	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:51.8574+00	2026-10-10 09:49:51.8574+00
-1158	Out There	out there | kate folk	2022	256	Short stories	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:51.964207+00	2026-10-10 09:49:51.964207+00
-1159	The Hike	the hike | lucy clarke	2023	375	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:51.980143+00	2026-10-10 09:49:51.980143+00
-1160	Below	below | laurel hightower	2022	124	Novella	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:52.058057+00	2026-10-10 09:49:52.058057+00
-1161	Cackle	cackle | rachel harrison	2021	291	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:52.183187+00	2026-10-10 09:49:52.183187+00
-1162	This is Where We Talk Things Out	this is where we talk things out | caitlin marceau	2022	86	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:52.266562+00	2026-10-10 09:49:52.266562+00
-1163	The Winter People	the winter people | jennifer mcmahon	2014	382	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:52.354725+00	2026-10-10 09:49:52.354725+00
-1164	The Drift	the drift | c. j. tudor	2023	390	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:52.367591+00	2026-10-10 09:49:52.367591+00
-1165	The Quiet Retreat	the quiet retreat | kiersten modglin	2022	240	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:52.456214+00	2026-10-10 09:49:52.456214+00
-1166	One of the Good Guys	one of the good guys | araminta hall	2024	288	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:52.573714+00	2026-10-10 09:49:52.573714+00
-1167	The Golden Spoon	the golden spoon | jessa maxwell	2023	375	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:52.686471+00	2026-10-10 09:49:52.686471+00
-1168	The Tusks of Extinction	the tusks of extinction | ray nayler	2024	113	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:52.853767+00	2026-10-10 09:49:52.853767+00
-1169	Yellowface	yellowface | r. f. kuang	2023	336	Novel	Adult	English	Yellow	Standalone	t	f	f	2026-10-10 09:49:52.961744+00	2026-10-10 09:49:52.961744+00
-1170	The Appeal	the appeal | janice hallett	2021	445	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:53.085244+00	2026-10-10 09:49:53.085244+00
-1171	No One Can Know	no one can know | kate alice marshall	2024	328	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:53.164954+00	2026-10-10 09:49:53.164954+00
-1172	The Reformatory	the reformatory | tanarive due	2023	571	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:49:53.357245+00	2026-10-10 09:49:53.357245+00
-1173	Out There Screaming	out there screaming | jordan peele	2023	366	Short stories	Adult	English	Gray	Standalone	t	f	f	2026-10-10 09:49:53.460483+00	2026-10-10 09:49:53.460483+00
-1174	Icebreaker	icebreaker | hannah grace	2022	435	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:53.584593+00	2026-10-10 09:49:53.584593+00
-1175	Killing Sarai	killing sarai | j. a. redmerski	2013	309	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:53.666919+00	2026-10-10 09:49:53.666919+00
-1176	This Wretched Valley	this wretched valley | jenny kiefer	2024	276	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:53.855863+00	2026-10-10 09:49:53.855863+00
-1177	The Shuddering	the shuddering | ania ahlborn	2013	283	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:53.961437+00	2026-10-10 09:49:53.961437+00
-1178	Night's Edge	night's edge | liz kerin	2023	288	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:54.085543+00	2026-10-10 09:49:54.085543+00
-1179	First Lie Wins	first lie wins | ashley elston	2024	340	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:54.253034+00	2026-10-10 09:49:54.253034+00
-1180	The First Sister	the first sister | linden a. lewis	2020	342	Novel	Adult	English	Black	Series	t	t	f	2026-10-10 09:49:54.361125+00	2026-10-10 09:49:54.361125+00
-1181	The Last Housewife	the last housewife | ashley winstead	2022	382	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:54.456492+00	2026-10-10 09:49:54.456492+00
-1182	Bloom	bloom | delilah s. dawson	2023	162	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:54.561928+00	2026-10-10 09:49:54.561928+00
-1183	Act Your Age, Eve Brown	act your age, eve brown | talia hibbert	2021	375	Novel	Adult	English	Blue	Series	t	f	f	2026-10-10 09:49:54.654572+00	2026-10-10 09:49:54.654572+00
-1184	The Fury	the fury | alex michaelides	2024	250	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:54.665961+00	2026-10-10 09:49:54.665961+00
-1185	Among the Living	among the living | tim lebbon	2024	236	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:54.797904+00	2026-10-10 09:49:54.797904+00
-1186	The Only Good Indians	the only good indians | stephen graham jones	2020	349	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:49:54.850472+00	2026-10-10 09:49:54.850472+00
-1187	Keep Her Secret	keep her secret | mark edwards	2023	315	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:54.862408+00	2026-10-10 09:49:54.862408+00
-1188	Your Shadow Half Remains	your shadow half remains | sunny moraine	2024	134	Novella	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:54.9636+00	2026-10-10 09:49:54.9636+00
-1189	He Will Be My Ruin	he will be my ruin | k. a. tucker	2016	341	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:54.975438+00	2026-10-10 09:49:54.975438+00
-1190	Sleeping Giants	sleeping giants | sylvain neuvel	2016	376	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:55.1533+00	2026-10-10 09:49:55.1533+00
-1191	Kill For Me, Kill For You	kill for me, kill for you | steve cavanagh	2023	346	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:55.256068+00	2026-10-10 09:49:55.256068+00
-1192	Lease on Love	lease on love | falon ballard	2022	332	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:55.363977+00	2026-10-10 09:49:55.363977+00
-1193	Reviving Izabel	reviving izabel | j. a. redmerski	2013	283	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:55.459019+00	2026-10-10 09:49:55.459019+00
-1194	Vera Wong's Unsolicited Advice for Murderers	vera wong's unsolicited advice for murderers | jesse q. sutanto	2023	334	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:55.55977+00	2026-10-10 09:49:55.55977+00
-1195	You've Lost a Lot of Blood	you've lost a lot of blood | eric larocca	2022	236	Novella	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:49:55.655879+00	2026-10-10 09:49:55.655879+00
-1196	The Echo Wife	the echo wife | sarah gailey	2021	256	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:55.669168+00	2026-10-10 09:49:55.669168+00
-1197	Dear Laura	dear laura | gemma amor	2019	111	Novella	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:55.798366+00	2026-10-10 09:49:55.798366+00
-1198	Midnight on Beacon Street	midnight on beacon street | emily ruth verona	2024	194	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:55.876216+00	2026-10-10 09:49:55.876216+00
-1199	My Darling Daughter	my darling daughter | j. p. delaney	2022	385	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:55.958025+00	2026-10-10 09:49:55.958025+00
-1200	The Night She Disappeared	the night she disappeared | lisa jewell	2021	465	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:56.050527+00	2026-10-10 09:49:56.050527+00
-1201	Let Him In	let him in | william friend	2022	238	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:56.156871+00	2026-10-10 09:49:56.156871+00
-1202	The Fiancee Farce	the fiancee farce | alexandria bellefleur	2023	384	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:56.167961+00	2026-10-10 09:49:56.167961+00
-1203	Gone to See the River Man	gone to see the river man | kristopher triana	2020	165	Novella	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:56.287729+00	2026-10-10 09:49:56.287729+00
-1204	Harry Potter and the Philosopher's Stone	harry potter and the philosopher's stone | j.k. rowling	1997	332	Novel	Middle-grade	English	Green	Series	f	f	f	2026-10-10 09:49:56.455339+00	2026-10-10 09:49:56.455339+00
-1205	Murder Road	murder road | simone st. james	2024	341	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:56.470513+00	2026-10-10 09:49:56.470513+00
-1206	Harry Potter and the Chamber of Secrets	harry potter and the chamber of secrets | j.k. rowling	1998	270	Novel	Middle-grade	English	Red	Series	f	f	f	2026-10-10 09:49:56.557096+00	2026-10-10 09:49:56.557096+00
-1207	Harry Potter and the Prisoner of Azkaban	harry potter and the prisoner of azkaban | j.k. rowling	1999	345	Novel	Middle-grade	English	Pink	Series	f	f	f	2026-10-10 09:49:56.569662+00	2026-10-10 09:49:56.569662+00
-1208	Harry Potter and the Goblet of Fire	harry potter and the goblet of fire | j.k. rowling	2000	577	Novel	Young adult	English	Green	Series	f	f	f	2026-10-10 09:49:56.659209+00	2026-10-10 09:49:56.659209+00
-1209	Harry Potter and the Order of the Phoenix	harry potter and the order of the phoenix | j.k. rowling	2003	793	Novel	Young adult	English	Blue	Series	f	f	f	2026-10-10 09:49:56.753367+00	2026-10-10 09:49:56.753367+00
-1210	Harry Potter and the Half-Blood Prince	harry potter and the half-blood prince | j.k. rowling	2005	519	Novel	Young adult	English	Green	Series	f	f	f	2026-10-10 09:49:56.767825+00	2026-10-10 09:49:56.767825+00
-1211	Nightwatching	nightwatching | tracy sierra	2024	368	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:56.958839+00	2026-10-10 09:49:56.958839+00
-1212	Harry Potter and the Deathly Hallows	harry potter and the deathly hallows | j.k. rowling	2007	610	Novel	Young adult	English	Orange	Series	f	f	f	2026-10-10 09:49:57.055344+00	2026-10-10 09:49:57.055344+00
-1213	Everyone is Watching	everyone is watching | heather gudenkauf	2024	279	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:57.154123+00	2026-10-10 09:49:57.154123+00
-1214	The Last Devil to Die	the last devil to die | richard osman	2023	417	Novel	Adult	English	Purple	Series	f	f	f	2026-10-10 09:49:57.167214+00	2026-10-10 09:49:57.167214+00
-1215	Love on the Brain	love on the brain | ali hazelwood	2022	352	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:57.254306+00	2026-10-10 09:49:57.254306+00
-1216	The Island	the island | adrian mckinty	2022	370	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:57.355982+00	2026-10-10 09:49:57.355982+00
-1217	The Passengers	the passengers | john marrs	2019	404	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:57.36762+00	2026-10-10 09:49:57.36762+00
-1218	All Systems Red	all systems red | martha wells	2017	144	Novella	Adult	English	Gray	Series	f	t	f	2026-10-10 09:49:57.495053+00	2026-10-10 09:49:57.495053+00
-1219	Diavola	diavola | jennifer thorne	2024	305	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:49:57.664419+00	2026-10-10 09:49:57.664419+00
-1220	The Swan & the Jackal	the swan & the jackal | j. a. redmerski	2014	294	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:57.753989+00	2026-10-10 09:49:57.753989+00
-1221	The Good Daughter	the good daughter | karin slaughter	2017	500	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:57.76655+00	2026-10-10 09:49:57.76655+00
-1222	Knock Knock Open Wide	knock knock open wide | neil sharpson	2023	384	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:57.956405+00	2026-10-10 09:49:57.956405+00
-1223	Listen for the Lie	listen for the lie | amy tintera	2024	390	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:58.15056+00	2026-10-10 09:49:58.15056+00
-1224	When She Was Me	when she was me | marlee bush	2024	346	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:58.259344+00	2026-10-10 09:49:58.259344+00
-1225	Tools of Engagement	tools of engagement | tessa bailey	2020	356	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:58.354593+00	2026-10-10 09:49:58.354593+00
-1226	Just Like Mother	just like mother | anne heltzel	2022	320	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:58.46533+00	2026-10-10 09:49:58.46533+00
-1227	The House That Horror Built	the house that horror built | christina henry	2024	317	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:58.554862+00	2026-10-10 09:49:58.554862+00
-1228	The Return	the return | rachel harrison	2020	296	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:58.570023+00	2026-10-10 09:49:58.570023+00
-1229	The Honey-Don't List	the honey-don't list | christina lauren	2020	303	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:58.661292+00	2026-10-10 09:49:58.661292+00
-1230	One Perfect Couple	one perfect couple | ruth ware	2024	360	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:58.673117+00	2026-10-10 09:49:58.673117+00
-1231	They Were Here Before Us	they were here before us | eric larocca	2022	80	Novella	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:58.760048+00	2026-10-10 09:49:58.760048+00
-1232	Such Sharp Teeth	such sharp teeth | rachel harrison	2022	315	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:58.850538+00	2026-10-10 09:49:58.850538+00
-1233	Mr. Nobody	mr. nobody | catherine steadman	2020	344	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:58.8637+00	2026-10-10 09:49:58.8637+00
-1234	Middle of the Night	middle of the night | riley sager	2024	366	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:58.950512+00	2026-10-10 09:49:58.950512+00
-1235	Seeds of Iniquity	seeds of iniquity | j. a. redmerski	2014	247	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:58.964611+00	2026-10-10 09:49:58.964611+00
-1236	The Roughest Draft	the roughest draft | austin siegemund-broka; emily wibberley	2022	313	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:59.253594+00	2026-10-10 09:49:59.253594+00
-1237	First Born	first born | will dean	2022	358	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:59.268211+00	2026-10-10 09:49:59.268211+00
-1238	Book Lovers	book lovers | emily henry	2022	373	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:59.357647+00	2026-10-10 09:49:59.357647+00
-1239	Stranded	stranded | sarah goodwin	2021	390	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:59.456834+00	2026-10-10 09:49:59.456834+00
-1240	Good Girl Complex	good girl complex | elle kennedy	2022	355	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:59.608753+00	2026-10-10 09:49:59.608753+00
-1241	Something Wilder	something wilder | christina lauren	2022	361	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:59.656826+00	2026-10-10 09:49:59.656826+00
-1242	Unbury Carol	unbury carol | josh malerman	2018	362	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:59.67105+00	2026-10-10 09:49:59.67105+00
-1243	How to Make a Horror Movie and Survive	how to make a horror movie and survive | craig dilouie	2024	430	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:59.855058+00	2026-10-10 09:49:59.855058+00
-1244	The Black Wolf	the black wolf | j. a. redmerski	2015	280	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:59.867247+00	2026-10-10 09:49:59.867247+00
-1245	Dear Child	dear child | romy hausmann	2019	326	Novel	Adult	German	White	Standalone	f	f	f	2026-10-10 09:50:00.057729+00	2026-10-10 09:50:00.057729+00
-1246	Flawless	flawless | elsie silver	2022	397	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:00.16322+00	2026-10-10 09:50:00.16322+00
-1247	Leave the World Behind	leave the world behind | rumaan alam	2020	268	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.281245+00	2026-10-10 09:50:00.281245+00
-1248	The Nanny	the nanny | lana ferguson	2023	403	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.457268+00	2026-10-10 09:50:00.457268+00
-1249	The Chamber	the chamber | will dean	2024	303	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.471898+00	2026-10-10 09:50:00.471898+00
-1250	Incidents Around the House	incidents around the house | josh malerman	2024	298	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.560812+00	2026-10-10 09:50:00.560812+00
-1251	Remnant Population	remnant population | elizabeth moon	1996	360	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.750587+00	2026-10-10 09:50:00.750587+00
-1252	Ladykiller	ladykiller | katherine wood	2024	382	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.854063+00	2026-10-10 09:50:00.854063+00
-1253	Attached at the Hip	attached at the hip | christine riccio	2024	419	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:00.9607+00	2026-10-10 09:50:00.9607+00
-1254	Bury Your Gays	bury your gays | chuck tingle	2024	318	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:01.058853+00	2026-10-10 09:50:01.058853+00
-1255	The Laws of the Skies	the laws of the skies | gregoire curtois	2016	118	Novella	Adult	French	Green	Standalone	f	f	f	2026-10-10 09:50:01.179067+00	2026-10-10 09:50:01.179067+00
-1256	The Haar	the haar | david sodergren	2022	206	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:01.283259+00	2026-10-10 09:50:01.283259+00
-1257	Such Pretty Flowers	such pretty flowers | k. l. cerra	2023	286	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:01.45547+00	2026-10-10 09:50:01.45547+00
-1258	The Pumpkin Spice Café	the pumpkin spice café | laurie gilmore	2023	286	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:01.558809+00	2026-10-10 09:50:01.558809+00
-1259	Wrong Place, Wrong Time	wrong place, wrong time | gillian mcallister	2022	312	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:01.677999+00	2026-10-10 09:50:01.677999+00
-1260	Episode Thirteen	episode thirteen | craig dilouie	2023	433	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:01.757687+00	2026-10-10 09:50:01.757687+00
-1261	Nestlings	nestlings | nat cassidy	2023	367	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:50:01.88612+00	2026-10-10 09:50:01.88612+00
-1262	Behind the Hands That Kill	behind the hands that kill | j. a. redmerski	2016	220	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:01.956104+00	2026-10-10 09:50:01.956104+00
-1263	Our Kind of Cruelty	our kind of cruelty | araminta hall	2018	345	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:01.968806+00	2026-10-10 09:50:01.968806+00
-1264	1922	1922 | stephen king	2010	154	Novella	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:02.057473+00	2026-10-10 09:50:02.057473+00
-1265	Leather & Lark	leather & lark | brynne weaver	2024	390	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:50:02.153216+00	2026-10-10 09:50:02.153216+00
-1266	Home Is Where the Bodies Are	home is where the bodies are | jeneva rose	2024	266	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:02.258314+00	2026-10-10 09:50:02.258314+00
-1267	We Used To Live Here	we used to live here | marcus kliewer	2024	264	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:02.361292+00	2026-10-10 09:50:02.361292+00
-1268	Annie Bot	annie bot | sierra greer	2024	252	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:02.479885+00	2026-10-10 09:50:02.479885+00
-1269	Not in Love	not in love | ali hazelwood	2024	379	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:02.555711+00	2026-10-10 09:50:02.555711+00
-1270	The Eyes Are the Best Part	the eyes are the best part | monika kim	2024	283	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:02.756566+00	2026-10-10 09:50:02.756566+00
-1271	Bride	bride | ali hazelwood	2024	396	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:02.772955+00	2026-10-10 09:50:02.772955+00
-1272	The Night Guest	the night guest | hildur knutsdottir	2021	197	Novella	Adult	Icelandic	Pink	Standalone	f	f	f	2026-10-10 09:50:02.960872+00	2026-10-10 09:50:02.960872+00
-1273	Worst Case Scenario	worst case scenario | t. j. newman	2024	307	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:03.058467+00	2026-10-10 09:50:03.058467+00
-1274	The Launch Party	the launch party | lauren a. forry	2023	368	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:03.183208+00	2026-10-10 09:50:03.183208+00
-1275	You Better Watch Out	you better watch out | darren wearmouth; james s. murray	2024	201	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:03.45911+00	2026-10-10 09:50:03.45911+00
-1276	We Solve Murders	we solve murders | richard osman	2024	380	Novel	Adult	English	Beige	Series	f	f	f	2026-10-10 09:50:03.553299+00	2026-10-10 09:50:03.553299+00
-1277	Cruel Winter With You	cruel winter with you | ali hazelwood	2024	60	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:03.574096+00	2026-10-10 09:50:03.574096+00
-1278	Dearest	dearest | jacquie walters	2024	292	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:03.76567+00	2026-10-10 09:50:03.76567+00
-1279	Make the Season Bright	make the season bright | ashley herring blake	2024	341	Novel	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:50:03.956928+00	2026-10-10 09:50:03.956928+00
-1280	The Most Wonderful Crime of the Year	the most wonderful crime of the year | ally carter	2024	390	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:04.071229+00	2026-10-10 09:50:04.071229+00
-1281	All I Want Is You	all i want is you | falon ballard	2024	234	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:04.161908+00	2026-10-10 09:50:04.161908+00
-1282	Merriment and Mayhem	merriment and mayhem | alexandria bellefleur	2024	46	Novella	Adult	English	Yellow	Series	f	t	f	2026-10-10 09:50:04.258918+00	2026-10-10 09:50:04.258918+00
-1283	Beg, Borrow, or Steal	beg, borrow, or steal | sarah adams	2025	343	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:04.356281+00	2026-10-10 09:50:04.356281+00
-1284	Jawbone	jawbone | monica ojeda	2018	254	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:04.556138+00	2026-10-10 09:50:04.556138+00
-1285	The Book of Accidents	the book of accidents | chuck wendig	2021	525	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:04.683268+00	2026-10-10 09:50:04.683268+00
-1286	Voices in the Snow	voices in the snow | darcy coates	2019	278	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:04.761139+00	2026-10-10 09:50:04.761139+00
-1287	The Gathering	the gathering | c. j. tudor	2024	372	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:04.860605+00	2026-10-10 09:50:04.860605+00
-1288	Rest Stop	rest stop | nat cassidy	2024	110	Novella	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:04.953949+00	2026-10-10 09:50:04.953949+00
-1289	The Nesting	the nesting | c. j. cooke	2020	394	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:05.469241+00	2026-10-10 09:50:05.469241+00
-1290	Lessons in Chemistry	lessons in chemistry | bonnie garmus	2022	409	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:05.630514+00	2026-10-10 09:50:05.630514+00
-1291	All the Colors of the Dark	all the colors of the dark | chris whitaker	2024	593	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:05.753195+00	2026-10-10 09:50:05.753195+00
-1292	The Baby Dragon Café	the baby dragon café | aamna qureshi	2025	271	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:05.859997+00	2026-10-10 09:50:05.859997+00
-1293	Lights Out	lights out | navessa allen	2024	414	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:05.984526+00	2026-10-10 09:50:05.984526+00
-1294	Wake Up and Open Your Eyes	wake up and open your eyes | clay mcleod chapman	2025	396	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:06.060297+00	2026-10-10 09:50:06.060297+00
-1295	Someone You Can Build a Nest In	someone you can build a nest in | john wiswell	2024	320	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:50:06.256162+00	2026-10-10 09:50:06.256162+00
-1296	Josh and Hazel's Guide to Not Dating	josh and hazel's guide to not dating | christina lauren	2018	306	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:06.356317+00	2026-10-10 09:50:06.356317+00
-1297	The Lodge	the lodge | kayla olson	2025	304	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:06.493781+00	2026-10-10 09:50:06.493781+00
-1298	Quicksilver	quicksilver | callie hart	2024	632	Novel	Adult	English	Gray	Series	f	f	f	2026-10-10 09:50:06.657935+00	2026-10-10 09:50:06.657935+00
-1299	The Favorites	the favorites | layne fargo	2025	466	Novel	Adult	English	Beige	Standalone	t	f	f	2026-10-10 09:50:06.755888+00	2026-10-10 09:50:06.755888+00
-1300	Cross My Heart	cross my heart | megan collins	2025	306	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:06.867655+00	2026-10-10 09:50:06.867655+00
-1301	The Night Swim	the night swim | megan goldin	2020	341	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:07.064717+00	2026-10-10 09:50:07.064717+00
-1302	Witchcraft for Wayward Girls	witchcraft for wayward girls | grady hendrix	2025	433	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:07.158278+00	2026-10-10 09:50:07.158278+00
-1303	The Final Scene	the final scene | steph nelson	2024	229	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:07.287835+00	2026-10-10 09:50:07.287835+00
-1304	Beautiful Ugly	beautiful ugly | alice feeney	2025	290	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:07.366163+00	2026-10-10 09:50:07.366163+00
-1305	Deep End	deep end | ali hazelwood	2025	436	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:07.458755+00	2026-10-10 09:50:07.458755+00
-1306	Scythe & Sparrow	scythe & sparrow | brynne weaver	2025	416	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:07.564893+00	2026-10-10 09:50:07.564893+00
-1307	Spiders in the Grove	spiders in the grove | j. a. redmerski	2018	283	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:07.656698+00	2026-10-10 09:50:07.656698+00
-1308	You Are Fatally Invited	you are fatally invited | ande pliego	2025	374	Novel	Adult	English	Orange	Standalone	t	t	f	2026-10-10 09:50:07.859661+00	2026-10-10 09:50:07.859661+00
-1309	The Hunger Games	the hunger games | suzanne collins	2008	454	Novel	Young adult	English	Black	Series	f	f	f	2026-10-10 09:50:08.06472+00	2026-10-10 09:50:08.06472+00
-1310	Catching Fire	catching fire | suzanne collins	2009	472	Novel	Young adult	English	Orange	Series	f	f	f	2026-10-10 09:50:08.162261+00	2026-10-10 09:50:08.162261+00
-1311	Mockingjay	mockingjay | suzanne collins	2010	455	Novel	Young adult	English	Blue	Series	f	f	f	2026-10-10 09:50:08.263146+00	2026-10-10 09:50:08.263146+00
-1312	Happenstance	happenstance | tessa bailey	2022	269	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:08.351998+00	2026-10-10 09:50:08.351998+00
-1313	Motherthing	motherthing | ainslie hogarth	2022	250	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:08.563326+00	2026-10-10 09:50:08.563326+00
-1314	Close Your Eyes and Count to 10	close your eyes and count to 10 | lisa unger	2025	366	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:08.755371+00	2026-10-10 09:50:08.755371+00
-1315	The Ballad of Songbirds and Snakes	the ballad of songbirds and snakes | suzanne collins	2020	517	Novel	Young adult	English	Brown	Series	f	f	f	2026-10-10 09:50:08.772634+00	2026-10-10 09:50:08.772634+00
-1316	Sunrise on the Reaping	sunrise on the reaping | suzanne collins	2025	348	Novel	Young adult	English	Purple	Series	f	f	f	2026-10-10 09:50:08.865873+00	2026-10-10 09:50:08.865873+00
-1317	Listen to Your Sister	listen to your sister | neena viel	2025	316	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:09.067215+00	2026-10-10 09:50:09.067215+00
-1318	Not in My Book	not in my book | katie holt	2024	368	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:09.256755+00	2026-10-10 09:50:09.256755+00
-1319	The Book Thief	the book thief | markus zusak	2005	492	Novel	Young adult	English	Brown	Standalone	f	f	f	2026-10-10 09:50:09.455716+00	2026-10-10 09:50:09.455716+00
-1320	The Answer Is No	the answer is no | fredrik backman	2024	55	Novella	Adult	Swedish	Orange	Standalone	f	f	f	2026-10-10 09:50:09.471506+00	2026-10-10 09:50:09.471506+00
-1321	The Fireman	the fireman | joe hill	2016	762	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:09.564875+00	2026-10-10 09:50:09.564875+00
-1322	You Killed Me First	you killed me first | john marrs	2025	299	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:09.660182+00	2026-10-10 09:50:09.660182+00
-1323	A Witch's Guide to Fake Dating a Demon	a witch's guide to fake dating a demon | sarah hawley	2023	363	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:09.85884+00	2026-10-10 09:50:09.85884+00
-1324	The Lamb	the lamb | lucy rose	2025	245	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:09.984237+00	2026-10-10 09:50:09.984237+00
-1325	Tell Me What You Did	tell me what you did | carter wilson	2025	365	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:10.162484+00	2026-10-10 09:50:10.162484+00
-1326	Foe	foe | iain reid	2018	260	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:10.25703+00	2026-10-10 09:50:10.25703+00
-1327	A Serial Killer's Guide to Marriage	a serial killer's guide to marriage | asia mackay	2025	332	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:10.45399+00	2026-10-10 09:50:10.45399+00
-1328	An Academy for Liars	an academy for liars | alexis henderson	2024	450	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:10.562402+00	2026-10-10 09:50:10.562402+00
-1329	Late Bloomer	late bloomer | mazey eddings	2024	304	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:10.757211+00	2026-10-10 09:50:10.757211+00
-1330	The Invited	the invited | jennifer mcmahon	2019	399	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:10.772038+00	2026-10-10 09:50:10.772038+00
-1331	Them	them | mique watson	2023	171	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:10.858141+00	2026-10-10 09:50:10.858141+00
-1332	The Doctor	the doctor | nikki sloane	2018	229	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:11.054782+00	2026-10-10 09:50:11.054782+00
-1333	The Good Son	the good son | you-jeong jeong	2016	242	Novel	Adult	Korean	Black	Standalone	t	f	f	2026-10-10 09:50:11.171012+00	2026-10-10 09:50:11.171012+00
-1334	Unhinged	unhinged | onley james	2021	239	Novel	Adult	English	Pink	Series	f	t	f	2026-10-10 09:50:11.358811+00	2026-10-10 09:50:11.358811+00
-1335	Graveyard Shift	graveyard shift | m. l. rio	2024	108	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:11.453714+00	2026-10-10 09:50:11.453714+00
-1336	Do Me a Favor	do me a favor | cathy yardley	2024	289	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:11.470472+00	2026-10-10 09:50:11.470472+00
-1337	The Memory Ward	the memory ward | jon bassoff	2025	300	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:11.66387+00	2026-10-10 09:50:11.66387+00
-1338	Collide	collide | bal khabra	2023	371	Novel	Adult	English	Green	Series	t	f	f	2026-10-10 09:50:11.857454+00	2026-10-10 09:50:11.857454+00
-1339	The Amendment	the amendment | kiersten modglin	2022	214	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:11.87246+00	2026-10-10 09:50:11.87246+00
-1340	Julie Chan Is Dead	julie chan is dead | liann zhang	2025	324	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:12.059854+00	2026-10-10 09:50:12.059854+00
-1341	The Atonement	the atonement | kiersten modglin	2022	215	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:12.154437+00	2026-10-10 09:50:12.154437+00
-1342	A Good Girl's Guide to Murder	a good girl's guide to murder | holly jackson	2019	433	Novel	Young adult	English	White	Series	t	f	f	2026-10-10 09:50:12.264626+00	2026-10-10 09:50:12.264626+00
-1343	Bat Eater and Other Names for Cora Zeng	bat eater and other names for cora zeng | kylie lee baker	2025	304	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:12.458535+00	2026-10-10 09:50:12.458535+00
-1344	Confessions on the 7:45	confessions on the 7:45 | lisa unger	2019	379	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:12.554777+00	2026-10-10 09:50:12.554777+00
-1345	Passion Project	passion project | london sperry	2025	319	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:12.669601+00	2026-10-10 09:50:12.669601+00
-1346	When the Wolf Comes Home	when the wolf comes home | nat cassidy	2025	371	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:12.761308+00	2026-10-10 09:50:12.761308+00
-1347	Eat the Ones You Love	eat the ones you love | sarah maria griffin	2025	241	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:13.008739+00	2026-10-10 09:50:13.008739+00
-1348	Anywhere You Go	anywhere you go | bridget morrisey	2025	320	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:13.1849+00	2026-10-10 09:50:13.1849+00
-1349	Small Game	small game | blair braverman	2022	288	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:13.366196+00	2026-10-10 09:50:13.366196+00
-1350	Blood on Her Tongue	blood on her tongue | johanna van veen	2025	283	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:13.565031+00	2026-10-10 09:50:13.565031+00
-1351	The Three Lives of Cate Kay	the three lives of cate kay | kate fagan	2025	283	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:13.760193+00	2026-10-10 09:50:13.760193+00
-1352	The Man Made of Smoke	the man made of smoke | alex north	2025	301	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:13.856027+00	2026-10-10 09:50:13.856027+00
-1353	Record of a Spaceborn Few	record of a spaceborn few | becky chambers	2018	358	Novel	Adult	English	Blue	Series	t	t	f	2026-10-10 09:50:13.869661+00	2026-10-10 09:50:13.869661+00
-1354	On the Same Page	on the same page | haley cass	2023	505	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:14.063018+00	2026-10-10 09:50:14.063018+00
-1355	Queen of Teeth	queen of teeth | hailey piper	2021	198	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:14.25087+00	2026-10-10 09:50:14.25087+00
-1356	To Be Devoured	to be devoured | sara tantlinger	2019	90	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:14.463257+00	2026-10-10 09:50:14.463257+00
-1357	The Influencers	the influencers | anna-marie mclemore	2025	381	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:50:14.557931+00	2026-10-10 09:50:14.557931+00
-1358	The True Love Experiment	the true love experiment | christina lauren	2023	401	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:14.654458+00	2026-10-10 09:50:14.654458+00
-1359	I Might Be In Trouble	i might be in trouble | daniel aleman	2024	360	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:50:14.862889+00	2026-10-10 09:50:14.862889+00
-1360	The Galaxy, and the Ground Within	the galaxy, and the ground within | becky chambers	2021	324	Novel	Adult	English	Purple	Series	t	t	f	2026-10-10 09:50:14.958241+00	2026-10-10 09:50:14.958241+00
-1361	Delilah Green Doesn't Care	delilah green doesn't care | ashley herring blake	2022	371	Novel	Adult	English	Purple	Series	f	t	f	2026-10-10 09:50:14.981936+00	2026-10-10 09:50:14.981936+00
-1362	My Best Friend's Honeymoon	my best friend's honeymoon | meryl wilsner	2025	235	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:15.255193+00	2026-10-10 09:50:15.255193+00
-1363	Atmosphere	atmosphere | taylor jenkins reid	2025	332	Novel	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:15.275784+00	2026-10-10 09:50:15.275784+00
-1364	Immaculate Conception	immaculate conception | ling ling huang	2025	244	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:15.366038+00	2026-10-10 09:50:15.366038+00
-1365	Caught Up	caught up | navessa allen	2025	332	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:15.461037+00	2026-10-10 09:50:15.461037+00
-1366	The Girls I've Been	the girls i've been | tess sharpe	2021	332	Novel	Young adult	English	Red	Series	f	t	f	2026-10-10 09:50:15.663271+00	2026-10-10 09:50:15.663271+00
-1367	The Hacienda	the hacienda | isabel cañas	2022	331	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:50:15.858212+00	2026-10-10 09:50:15.858212+00
-1368	The Ghostwriter	the ghostwriter | julie clark	2025	328	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:15.954481+00	2026-10-10 09:50:15.954481+00
-1369	Insomnia	insomnia | sarah pinborough	2022	340	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:15.968477+00	2026-10-10 09:50:15.968477+00
-1370	Happy Place	happy place | emily henry	2023	385	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:16.05882+00	2026-10-10 09:50:16.05882+00
-1371	The Poppy War	the poppy war | r. f. kuang	2018	527	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:50:16.151187+00	2026-10-10 09:50:16.151187+00
-1372	With a Vengeance	with a vengeance | riley sager	2025	311	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:16.250539+00	2026-10-10 09:50:16.250539+00
-1373	Out on a Limb	out on a limb | hannah bonam-young	2023	348	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:50:16.457293+00	2026-10-10 09:50:16.457293+00
-1374	The Humans	the humans | matt haig	2013	291	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:16.654735+00	2026-10-10 09:50:16.654735+00
-1375	Sky Daddy	sky daddy | kate folk	2025	285	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:16.750509+00	2026-10-10 09:50:16.750509+00
-1376	First-Time Caller	first-time caller | b. k. borison	2025	391	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:16.766634+00	2026-10-10 09:50:16.766634+00
-1377	At Home With the Horrors	at home with the horrors | sammy scott	2022	462	Short stories	Adult	English	Blue	Collection	f	f	f	2026-10-10 09:50:16.859662+00	2026-10-10 09:50:16.859662+00
-1378	Saltwater	saltwater | katy hays	2025	355	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:17.070664+00	2026-10-10 09:50:17.070664+00
-1379	Theme Music	theme music | t. marie vandelly	2019	383	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:17.254307+00	2026-10-10 09:50:17.254307+00
-1380	The Private Jet	the private jet | sarah goodwin	2025	287	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:17.274559+00	2026-10-10 09:50:17.274559+00
-1381	The Paradise Problem	the paradise problem | christina lauren	2024	336	Novel	Adult	English	Yellow	Standalone	t	f	f	2026-10-10 09:50:17.36211+00	2026-10-10 09:50:17.36211+00
-1382	Strange Pictures	strange pictures | uketsu	2022	180	Novella	Adult	Japanese	Green	Standalone	t	f	f	2026-10-10 09:50:17.578046+00	2026-10-10 09:50:17.578046+00
-1383	Unhinged	unhinged | steph macca	2024	186	Novella	Adult	English	Gray	Series	f	f	f	2026-10-10 09:50:17.875049+00	2026-10-10 09:50:17.875049+00
-1384	I Can Fix Her	i can fix her | rae wilde	2025	69	Novella	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:18.060644+00	2026-10-10 09:50:18.060644+00
-1385	Wearing the Lion	wearing the lion | john wiswell	2025	400	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:50:18.154961+00	2026-10-10 09:50:18.154961+00
-1386	Problematic Summer Romance	problematic summer romance | ali hazelwood	2025	397	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:50:18.169116+00	2026-10-10 09:50:18.169116+00
-1387	Sunburned	sunburned | katherine wood	2025	335	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:18.259345+00	2026-10-10 09:50:18.259345+00
-1388	Playing Nice	playing nice | j. p. delaney	2020	422	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:18.354864+00	2026-10-10 09:50:18.354864+00
-1389	Done and Dusted	done and dusted | lyla sage	2023	321	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:18.514136+00	2026-10-10 09:50:18.514136+00
-1390	Love & Other Killers	love & other killers | brynne weaver	2025	61	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:18.56243+00	2026-10-10 09:50:18.56243+00
-1391	Swift and Saddled	swift and saddled | lyla sage	2024	285	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:18.660905+00	2026-10-10 09:50:18.660905+00
-1392	How to Survive a Horror Story	how to survive a horror story | mallory arnold	2025	353	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:18.872721+00	2026-10-10 09:50:18.872721+00
-1393	Lost and Lassoed	lost and lassoed | lyla sage	2024	368	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:18.974897+00	2026-10-10 09:50:18.974897+00
-1394	Tender Is the Flesh	tender is the flesh | agustina bazterrica	2017	164	Novella	Adult	Spanish	Black	Standalone	f	f	f	2026-10-10 09:50:19.25765+00	2026-10-10 09:50:19.25765+00
-1395	One in Four	one in four | lucinda berry	2025	245	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:19.35949+00	2026-10-10 09:50:19.35949+00
-1396	Wild and Wrangled	wild and wrangled | lyla sage	2025	368	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:19.465709+00	2026-10-10 09:50:19.465709+00
-1397	Arcana Academy	arcana academy | elise kova	2025	544	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:50:19.669082+00	2026-10-10 09:50:19.669082+00
-1398	The Wedding People	the wedding people | alison espach	2024	381	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:50:19.856947+00	2026-10-10 09:50:19.856947+00
-1399	The House of My Mother	the house of my mother | shari franke	2025	256	Memoir	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:19.973016+00	2026-10-10 09:50:19.973016+00
-1400	The Cinnamon Bun Book Store	the cinnamon bun book store | laurie gilmore	2024	347	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:20.061443+00	2026-10-10 09:50:20.061443+00
-1401	We Live Here Now	we live here now | sarah pinborough	2025	283	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:20.159953+00	2026-10-10 09:50:20.159953+00
-1402	Dire Bound	dire bound | sable sorensen	2025	619	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:20.359584+00	2026-10-10 09:50:20.359584+00
-1403	There Are No Saints	there are no saints | sophie lark	2021	293	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:20.554673+00	2026-10-10 09:50:20.554673+00
-1404	The Bewitching	the bewitching | silvia moreno-garcia	2025	383	Novel	Adult	English	Green	Standalone	t	f	f	2026-10-10 09:50:20.656147+00	2026-10-10 09:50:20.656147+00
-1405	The Night Sister	the night sister | jennifer mcmahon	2015	369	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:20.754168+00	2026-10-10 09:50:20.754168+00
-1406	People Watching	people watching | hannah bonam-young	2025	328	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:50:20.854815+00	2026-10-10 09:50:20.854815+00
-1407	Automatic Noodle	automatic noodle | annalee newitz	2025	128	Novella	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:50:21.062162+00	2026-10-10 09:50:21.062162+00
-1408	Gray After Dark	gray after dark | noelle w. ihli	2024	289	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:21.255188+00	2026-10-10 09:50:21.255188+00
-1409	The Therapist	the therapist | helene flood	2019	301	Novel	Adult	Norwegian	Gray	Standalone	f	f	f	2026-10-10 09:50:21.366969+00	2026-10-10 09:50:21.366969+00
-1410	13 Months Haunted	13 months haunted | jimmy juliano	2025	372	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:21.46212+00	2026-10-10 09:50:21.46212+00
-1411	This Skin Was Once Mine and Other Disturbances	this skin was once mine and other disturbances | eric larocca	2024	186	Short stories	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:50:21.558349+00	2026-10-10 09:50:21.558349+00
-1412	House of Leaves	house of leaves | mark z. danielewski	2000	709	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:21.760861+00	2026-10-10 09:50:21.760861+00
-1413	Mate	mate | ali hazelwood	2025	446	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:21.86161+00	2026-10-10 09:50:21.86161+00
-1414	The Burning Girls	the burning girls | c. j. tudor	2021	384	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:21.95816+00	2026-10-10 09:50:21.95816+00
-1415	Tourist Season	tourist season | brynne weaver	2025	428	Novel	Adult	English	Purple	Series	f	f	f	2026-10-10 09:50:22.061341+00	2026-10-10 09:50:22.061341+00
-1416	Night Shoot	night shoot | david sodergren	2019	209	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:22.159239+00	2026-10-10 09:50:22.159239+00
-1417	Guillotine	guillotine | delilah s. dawson	2024	163	Novella	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:22.256911+00	2026-10-10 09:50:22.256911+00
-1418	A Dowry of Blood	a dowry of blood | s. t. gibson	2021	292	Novel	Adult	English	Black	Series	f	t	f	2026-10-10 09:50:22.462596+00	2026-10-10 09:50:22.462596+00
-1419	The Intruder	the intruder | freida mcfadden	2025	256	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:22.660956+00	2026-10-10 09:50:22.660956+00
-1420	Silver Elite	silver elite | dani francis	2025	512	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:22.86195+00	2026-10-10 09:50:22.86195+00
-1421	Futility	futility | nuzo onoh	2025	271	Novel	Adult	English	Teal	Standalone	t	f	f	2026-10-10 09:50:23.064591+00	2026-10-10 09:50:23.064591+00
-1422	Matchmaking for Psychopaths	matchmaking for psychopaths | tasha coryell	2025	303	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:23.262212+00	2026-10-10 09:50:23.262212+00
-1423	The Crash	the crash | freida mcfadden	2025	285	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:23.361354+00	2026-10-10 09:50:23.361354+00
-1424	Katabasis	katabasis | r. f. kuang	2025	541	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:23.460068+00	2026-10-10 09:50:23.460068+00
-1425	What Hunger	what hunger | catherine dang	2025	237	Novel	Adult	English	Red	Standalone	t	f	f	2026-10-10 09:50:23.662793+00	2026-10-10 09:50:23.662793+00
-1426	Broken Country	broken country | clare leslie hall	2025	262	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:23.864263+00	2026-10-10 09:50:23.864263+00
-1427	Spiral	spiral | bal khabra	2025	338	Novel	Adult	English	Purple	Series	t	f	f	2026-10-10 09:50:23.966826+00	2026-10-10 09:50:23.966826+00
-1428	Breathe In, Bleed Out	breathe in, bleed out | brian mcauley	2025	259	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:24.253932+00	2026-10-10 09:50:24.253932+00
-1429	I Who Have Never Known Men	i who have never known men | jacqueline harpman	1995	188	Novel	Adult	French	Black	Standalone	f	f	f	2026-10-10 09:50:24.456539+00	2026-10-10 09:50:24.456539+00
-1430	The Tenant	the tenant | freida mcfadden	2025	368	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:24.55662+00	2026-10-10 09:50:24.55662+00
-1431	You Make It Feel Like Christmas	you make it feel like christmas | sophie sullivan	2025	303	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:24.761544+00	2026-10-10 09:50:24.761544+00
-1432	The Picture of Dorian Gray	the picture of dorian gray | oscar wilde	1891	203	Novel	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:24.965938+00	2026-10-10 09:50:24.965938+00
-1433	Alchemy of Secrets	alchemy of secrets | stephanie garber	2025	311	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:25.161202+00	2026-10-10 09:50:25.161202+00
-1434	Twisted Love	twisted love | ana huang	2021	343	Novel	Adult	English	Blue	Series	t	f	f	2026-10-10 09:50:25.362185+00	2026-10-10 09:50:25.362185+00
-1435	Set the Record Straight	set the record straight | hannah bonam-young	2022	169	Novella	Adult	English	White	Standalone	f	t	f	2026-10-10 09:50:25.460049+00	2026-10-10 09:50:25.460049+00
-1436	I'll Be Gone for Christmas	i'll be gone for christmas | georgia k. boone	2024	279	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:25.668893+00	2026-10-10 09:50:25.668893+00
-1437	Isola	isola | allegra goodman	2025	362	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:25.955244+00	2026-10-10 09:50:25.955244+00
-1438	Strange Sally Diamond	strange sally diamond | liz nugent	2023	374	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:26.158884+00	2026-10-10 09:50:26.158884+00
-1439	He Sees You When You're Sleeping	he sees you when you're sleeping | alta hensley	2024	270	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:26.369289+00	2026-10-10 09:50:26.369289+00
-1440	Victorian Psycho	victorian psycho | virginia feito	2025	149	Novella	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:26.569683+00	2026-10-10 09:50:26.569683+00
-1441	Booked for the Holidays	booked for the holidays | liz maverick	2024	147	Novella	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:26.781884+00	2026-10-10 09:50:26.781884+00
-1442	He Knows When You're Awake	he knows when you're awake | alta hensley	2025	298	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:26.866034+00	2026-10-10 09:50:26.866034+00
-1443	The Yacht	the yacht | sarah goodwin	2024	305	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:26.960004+00	2026-10-10 09:50:26.960004+00
-1444	Seduction Theory	seduction theory | emily adrian	2025	181	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:50:27.159218+00	2026-10-10 09:50:27.159218+00
-1445	Brimstone	brimstone | callie hart	2025	660	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:27.174636+00	2026-10-10 09:50:27.174636+00
-1446	Soul Searching	soul searching | lyla sage	2025	303	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:27.264916+00	2026-10-10 09:50:27.264916+00
-1447	Dating After the End of the World	dating after the end of the world | jeneva rose	2025	308	Novel	Adult	English	Purple	Series	f	f	f	2026-10-10 09:50:27.356646+00	2026-10-10 09:50:27.356646+00
-1448	Brother	brother | ania ahlborn	2015	319	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:50:27.45321+00	2026-10-10 09:50:27.45321+00
-1449	Whiteout	whiteout | r. s. burnett	2025	256	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:27.658342+00	2026-10-10 09:50:27.658342+00
-1450	So Thirsty	so thirsty | rachel harrison	2024	315	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:27.757464+00	2026-10-10 09:50:27.757464+00
-1451	At Dark, I Become Loathsome	at dark, i become loathsome | eric larocca	2025	174	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:50:27.859118+00	2026-10-10 09:50:27.859118+00
-1452	House of Hunger	house of hunger | alexis henderson	2022	288	Novel	Adult	English	Green	Standalone	t	t	f	2026-10-10 09:50:27.961632+00	2026-10-10 09:50:27.961632+00
-1453	In Your Dreams	in your dreams | sarah adams	2025	330	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:28.062948+00	2026-10-10 09:50:28.062948+00
-1454	Beautiful Venom	beautiful venom | rina kent	2025	484	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:28.271188+00	2026-10-10 09:50:28.271188+00
-1455	We Who Will Die	we who will die | stacia stark	2025	500	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:28.478075+00	2026-10-10 09:50:28.478075+00
-1456	Behind the Net	behind the net | stephanie archer	2023	404	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:28.662333+00	2026-10-10 09:50:28.662333+00
-1457	Full Speed to a Crash Landing	full speed to a crash landing | beth revis	2024	187	Novella	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:28.862741+00	2026-10-10 09:50:28.862741+00
-1458	Woman Down	woman down | colleen hoover	2026	299	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:28.960899+00	2026-10-10 09:50:28.960899+00
-1459	Ninth House	ninth house | leigh bardugo	2019	450	Novel	Adult	English	Black	Series	t	f	f	2026-10-10 09:50:29.164832+00	2026-10-10 09:50:29.164832+00
-1460	Ask for Andrea	ask for andrea | noelle w. ihli	2022	267	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:29.264472+00	2026-10-10 09:50:29.264472+00
-1461	The Housemaid	the housemaid | freida mcfadden	2022	328	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:29.361265+00	2026-10-10 09:50:29.361265+00
-1462	Spread Me	spread me | sarah gailey	2025	146	Novella	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:29.461042+00	2026-10-10 09:50:29.461042+00
-1463	Sweet Venom	sweet venom | rina kent	2025	441	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:29.559358+00	2026-10-10 09:50:29.559358+00
-1464	My Husband's Wife	my husband's wife | alice feeney	2026	289	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:29.66083+00	2026-10-10 09:50:29.66083+00
-1465	Twisted Games	twisted games | ana huang	2021	438	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:50:29.761496+00	2026-10-10 09:50:29.761496+00
-1466	Say You'll Remember Me	say you'll remember me | abby jimenez	2025	353	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:29.969037+00	2026-10-10 09:50:29.969037+00
-1467	Escape!	escape! | stephen fischbach	2026	424	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:30.163933+00	2026-10-10 09:50:30.163933+00
-1468	Twisted Hate	twisted hate | ana huang	2022	504	Novel	Adult	English	Pink	Series	t	f	f	2026-10-10 09:50:30.262968+00	2026-10-10 09:50:30.262968+00
-1469	Half His Age	half his age | jennette mccurdy	2026	238	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:30.472153+00	2026-10-10 09:50:30.472153+00
-1470	Love and Other Brain Experiments	love and other brain experiments | hannah brohm	2026	352	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:30.660614+00	2026-10-10 09:50:30.660614+00
-1471	No Body No Crime	no body no crime | tess sharpe	2025	292	Novel	Adult	English	Beige	Standalone	f	t	f	2026-10-10 09:50:30.761986+00	2026-10-10 09:50:30.761986+00
-1472	When in Rome	when in rome | sarah adams	2022	306	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:30.857714+00	2026-10-10 09:50:30.857714+00
-1473	Dear Debbie	dear debbie | freida mcfadden	2026	315	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:30.954621+00	2026-10-10 09:50:30.954621+00
-1474	Twisted Lies	twisted lies | ana huang	2022	558	Novel	Adult	English	Green	Series	t	f	f	2026-10-10 09:50:31.055115+00	2026-10-10 09:50:31.055115+00
-1475	Girl Dinner	girl dinner | olivie blake	2025	323	Novel	Adult	English	Teal	Standalone	t	f	f	2026-10-10 09:50:31.268308+00	2026-10-10 09:50:31.268308+00
-1476	Adrift	adrift | will dean	2026	300	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:31.371272+00	2026-10-10 09:50:31.371272+00
-1477	We Met Like This	we met like this | kasie west	2025	312	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:31.660156+00	2026-10-10 09:50:31.660156+00
-1478	There Is No Devil	there is no devil | sophie lark	2021	281	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:31.764894+00	2026-10-10 09:50:31.764894+00
-1479	The Devotion of Suspect X	the devotion of suspect x | keigo higashino	2005	275	Novel	Adult	Japanese	Black	Standalone	t	f	f	2026-10-10 09:50:31.967918+00	2026-10-10 09:50:31.967918+00
-1480	Game On	game on | navessa allen	2026	370	Novel	Adult	English	Green	Series	f	t	f	2026-10-10 09:50:32.068591+00	2026-10-10 09:50:32.068591+00
-1481	Daphne	daphne | josh malerman	2022	254	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:32.16458+00	2026-10-10 09:50:32.16458+00
-1482	Best Offer Wins	best offer wins | marisa kashino	2025	257	Novel	Adult	English	Red	Standalone	t	f	f	2026-10-10 09:50:32.457028+00	2026-10-10 09:50:32.457028+00
-1483	Fourth Wing	fourth wing | rebecca yarros	2023	561	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:50:32.660594+00	2026-10-10 09:50:32.660594+00
-1484	Heartless	heartless | elsie silver	2022	432	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:32.759451+00	2026-10-10 09:50:32.759451+00
-1485	The Extra	the extra | annie neugebauer	2025	83	Novella	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:33.359863+00	2026-10-10 09:50:33.359863+00
-1486	Anatomy of an Alibi	anatomy of an alibi | ashley elston	2026	314	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:33.459661+00	2026-10-10 09:50:33.459661+00
-1487	Across the Vanishing Sky	across the vanishing sky | catherine cowles	2026	493	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:33.661425+00	2026-10-10 09:50:33.661425+00
-1488	The Secret Lives of Murderers' Wives	the secret lives of murderers' wives | elizabeth arnott	2026	296	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:33.857452+00	2026-10-10 09:50:33.857452+00
-1489	The Library at Hellebore	the library at hellebore | cassandra khaw	2025	266	Novel	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:50:34.060984+00	2026-10-10 09:50:34.060984+00
-1490	Just Friends	just friends | haley pham	2026	292	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:50:34.256717+00	2026-10-10 09:50:34.256717+00
-1491	Butter	butter | asako yuzuki	2017	474	Novel	Adult	Japanese	Yellow	Standalone	t	f	f	2026-10-10 09:50:34.459276+00	2026-10-10 09:50:34.459276+00
-1492	I'm a Fan	i'm a fan | sheena patel	2022	203	Novel	Adult	English	Pink	Standalone	t	f	f	2026-10-10 09:50:34.656695+00	2026-10-10 09:50:34.656695+00
-1493	Strange Houses	strange houses | uketsu	2021	197	Novella	Adult	Japanese	Red	Standalone	t	f	f	2026-10-10 09:50:34.755789+00	2026-10-10 09:50:34.755789+00
-1494	Walking Practice	walking practice | dolki min	2022	160	Novella	Adult	Korean	Black	Standalone	t	t	f	2026-10-10 09:50:34.963063+00	2026-10-10 09:50:34.963063+00
-1495	The Ending Writes Itself	the ending writes itself | evelyn clarke	2026	385	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:35.254421+00	2026-10-10 09:50:35.254421+00
-1496	The Caretaker	the caretaker | marcus kliewer	2026	291	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:35.357531+00	2026-10-10 09:50:35.357531+00
-1497	My Heart Is a Chainsaw	my heart is a chainsaw | stephen graham jones	2021	439	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:50:35.460726+00	2026-10-10 09:50:35.460726+00
-1498	Skate It Till You Make It	skate it till you make it | rufaro faith mazarura	2026	334	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:35.666559+00	2026-10-10 09:50:35.666559+00
-1499	It's Not the End of the World	it's not the end of the world | jonathan parks-ramage	2025	380	Novel	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:35.760335+00	2026-10-10 09:50:35.760335+00
-1500	These Violent Delights	these violent delights | micah nemerever	2020	460	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:50:35.959711+00	2026-10-10 09:50:35.959711+00
-1501	Of Monsters and Mainframes	of monsters and mainframes | barbara truelove	2025	367	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:36.163494+00	2026-10-10 09:50:36.163494+00
-1502	Heated Rivalry	heated rivalry | rachel reid	2019	337	Novel	Adult	English	Blue	Series	f	t	f	2026-10-10 09:50:36.450967+00	2026-10-10 09:50:36.450967+00
-1503	Iron Flame	iron flame | rebecca yarros	2023	786	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:36.469601+00	2026-10-10 09:50:36.469601+00
-1504	Hungerstone	hungerstone | kat dunn	2025	377	Novel	Adult	English	Brown	Standalone	f	t	f	2026-10-10 09:50:36.761186+00	2026-10-10 09:50:36.761186+00
-1505	Vladimir	vladimir | julia may jonas	2022	292	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:36.966128+00	2026-10-10 09:50:36.966128+00
-1506	Stars In Your Eyes	stars in your eyes | kacen callender	2023	324	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:50:37.157207+00	2026-10-10 09:50:37.157207+00
-1507	Astrid Parker Doesn't Fail	astrid parker doesn't fail | ashley herring blake	2022	363	Novel	Adult	English	Teal	Series	f	t	f	2026-10-10 09:50:37.258287+00	2026-10-10 09:50:37.258287+00
-1508	Thirty Love	thirty love | tom vellner	2026	306	Novel	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:50:37.557909+00	2026-10-10 09:50:37.557909+00
-1509	The Devil She Knows	the devil she knows | alexandria bellefleur	2025	322	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:37.661491+00	2026-10-10 09:50:37.661491+00
-1510	Five	five | ilona bannister	2026	230	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:37.956013+00	2026-10-10 09:50:37.956013+00
-1511	Blue Sisters	blue sisters | coco mellors	2024	371	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:50:38.181286+00	2026-10-10 09:50:38.181286+00
-1512	Funny Story	funny story | emily henry	2024	384	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:38.359564+00	2026-10-10 09:50:38.359564+00
-1513	Not Safe For Work	not safe for work | nisha j. tuli	2025	335	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:50:38.65155+00	2026-10-10 09:50:38.65155+00
-1514	From Below	from below | darcy coates	2022	469	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:38.756041+00	2026-10-10 09:50:38.756041+00
-1515	The Housewife	the housewife | natalie barelli	2026	368	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:39.072819+00	2026-10-10 09:50:39.072819+00
-1516	The Other	the other | annie neugebauer	2026	152	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:39.15954+00	2026-10-10 09:50:39.15954+00
-1517	Christine	christine | stephen king	1983	749	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:39.260229+00	2026-10-10 09:50:39.260229+00
-1518	FantasticLand	fantasticland | mike bockoven	2016	277	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:39.566021+00	2026-10-10 09:50:39.566021+00
-1519	King of Wrath	king of wrath | ana huang	2022	379	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:50:39.672746+00	2026-10-10 09:50:39.672746+00
-1520	Tempting Venom	tempting venom | rina kent	2026	564	Novel	Adult	English	White	Series	f	t	f	2026-10-10 09:50:39.855209+00	2026-10-10 09:50:39.855209+00
-1521	Too Old For This	too old for this | samantha downing	2025	316	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:39.960775+00	2026-10-10 09:50:39.960775+00
-1522	Yesteryear	yesteryear | caro claire burke	2026	427	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:40.257599+00	2026-10-10 09:50:40.257599+00
-1523	The Employees	the employees | olga ravn	2018	155	Novella	Adult	Danish	Black	Standalone	f	f	f	2026-10-10 09:50:40.473903+00	2026-10-10 09:50:40.473903+00
-1524	The Business Trip	the business trip | jessie garcia	2025	294	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:40.854947+00	2026-10-10 09:50:40.854947+00
-1525	Deep Cuts	deep cuts | holly brickley	2025	284	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:41.064895+00	2026-10-10 09:50:41.064895+00
-1526	The Fountains of Silence	the fountains of silence | ruta sepetys	2019	492	Novel	Young adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:41.168398+00	2026-10-10 09:50:41.168398+00
-1527	Your Knife, My Heart	your knife, my heart | k.m. moronova	2025	301	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:41.471313+00	2026-10-10 09:50:41.471313+00
-1528	Stranger Things Have Happened	stranger things have happened | kasie west	2026	291	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:41.571261+00	2026-10-10 09:50:41.571261+00
-1529	Tomorrow, and Tomorrow, and Tomorrow	tomorrow, and tomorrow, and tomorrow | gabrielle zevin	2022	397	Novel	Adult	English	Multicolor	Standalone	t	f	f	2026-10-10 09:50:41.858865+00	2026-10-10 09:50:41.858865+00
-1530	The Unknown	the unknown | riley sager	2026	366	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:41.968456+00	2026-10-10 09:50:41.968456+00
-1531	My Friends	my friends | fredrik backman	2025	422	Novel	Adult	Swedish	Blue	Standalone	f	f	f	2026-10-10 09:50:42.070329+00	2026-10-10 09:50:42.070329+00
-1532	Hot Girl Murder Club	hot girl murder club | ashley winstead	2026	354	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:50:42.253836+00	2026-10-10 09:50:42.253836+00
-1533	Bright Young Women	bright young women | jessica knoll	2023	373	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:42.457782+00	2026-10-10 09:50:42.457782+00
-1534	The Open Era	the open era | edward schmit	2026	351	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:42.667922+00	2026-10-10 09:50:42.667922+00
-1535	The Saturday Night Ghost Club	the saturday night ghost club | craig davidson	2018	253	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:42.875004+00	2026-10-10 09:50:42.875004+00
-1536	The Housemaid's Secret	the housemaid's secret | freida mcfadden	2023	327	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:42.967641+00	2026-10-10 09:50:42.967641+00
-1537	My Roommate Is a Vampire	my roommate is a vampire | jenna levine	2023	337	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:43.264896+00	2026-10-10 09:50:43.264896+00
-1538	If It Makes You Happy	if it makes you happy | julie olivia	2025	491	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:43.556897+00	2026-10-10 09:50:43.556897+00
-1539	The Woman in the Purple Skirt	the woman in the purple skirt | natsuko imamura	2019	127	Novella	Adult	Japanese	Purple	Standalone	t	f	f	2026-10-10 09:50:43.757906+00	2026-10-10 09:50:43.757906+00
-1540	Onyx Storm	onyx storm | rebecca yarros	2025	656	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:43.867491+00	2026-10-10 09:50:43.867491+00
-1541	The Green Mile	the green mile | stephen king	1996	433	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:43.979648+00	2026-10-10 09:50:43.979648+00
-1542	The Husbands	the husbands | holly gramazio	2025	316	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:44.356043+00	2026-10-10 09:50:44.356043+00
-1078	Things Have Gotten Worse Since We Last Spoke and Other Misfortunes	things have gotten worse since we last spoke and other misfortunes | eric larocca	2022	275	Short stories	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:45.162803+00	2026-10-11 15:01:49.133213+00
-2440	My Lovely Wife	my lovely wife | samantha downing	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:09.160895+00	2026-10-11 15:10:09.160895+00
-2397	Bunny	bunny | mona awad	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:56.774455+00	2026-10-11 15:10:17.471805+00
-2462	Not Quite Dead Yet	not quite dead yet | holly jackson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.560445+00	2026-10-11 15:10:12.560445+00
-2466	Where You End	where you end | abbott kahler	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.766078+00	2026-10-11 15:10:12.766078+00
-2468	Yours Truly	yours truly | abby jimenez	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.777518+00	2026-10-11 15:10:12.777518+00
-2469	A Particularly Nasty Case	a particularly nasty case | adam kay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.791505+00	2026-10-11 15:10:12.791505+00
-2472	Summer in the City	summer in the city | alex aster	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.816251+00	2026-10-11 15:10:12.816251+00
-2473	The Night Shift	the night shift | alex finlay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.823121+00	2026-10-11 15:10:12.823121+00
-2474	What Have We Done	what have we done | alex finlay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.829857+00	2026-10-11 15:10:12.829857+00
-2479	First	first | ali hazelwood	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.869214+00	2026-10-11 15:10:12.869214+00
-2480	Love in the Time of Serial Killers	love in the time of serial killers | alicia thompson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.876737+00	2026-10-11 15:10:12.876737+00
-2483	We Are Watching	we are watching | alison gaylin	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.896897+00	2026-10-11 15:10:12.896897+00
-2485	The Bay	the bay | allie reynolds	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.913057+00	2026-10-11 15:10:12.913057+00
-2490	The Catch	the catch | amy lea	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.947986+00	2026-10-11 15:10:12.947986+00
-2491	Something Like Fate	something like fate | amy lea	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.953091+00	2026-10-11 15:10:12.953091+00
-2492	Ruins	ruins | amy taylor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.95974+00	2026-10-11 15:10:12.95974+00
-2496	You Weren't Meant to Be Human	you weren't meant to be human | andrew joseph white	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.987607+00	2026-10-11 15:10:12.987607+00
-2497	The Seven Visitations of Sydney Burgess	the seven visitations of sydney burgess | andy marino	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.997391+00	2026-10-11 15:10:12.997391+00
-2501	Dream On, Ramona RIley	dream on, ramona riley | ashley herring blake	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.025702+00	2026-10-11 15:10:13.025702+00
-2503	Loving a Vampire Is Total Chaos	loving a vampire is total chaos | aura hayes	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.04343+00	2026-10-11 15:10:13.04343+00
-2504	Book Boyfriend	book boyfriend | austin siegemund-broka; emily wibberly	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.050864+00	2026-10-11 15:10:13.050864+00
-2507	The Guest	the guest | b. a. paris	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.073946+00	2026-10-11 15:10:13.073946+00
-2508	Good Spirits	good spirits | b. k. borison	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.080923+00	2026-10-11 15:10:13.080923+00
-2509	Coram House	coram house | bailey seybolt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.091974+00	2026-10-11 15:10:13.091974+00
-2510	Discontent	discontent | beatriz serrano	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.103072+00	2026-10-11 15:10:13.103072+00
-2511	Pomona Afton Can So Solve a Murder	pomona afton can so solve a murder | bellamy rose	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.13764+00	2026-10-11 15:10:13.13764+00
-2512	Everyone on This Train is a Suspect	everyone on this train is a suspect | benjamin stevenson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.146667+00	2026-10-11 15:10:13.146667+00
-2514	Kindling	kindling | bonnie woods	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.169622+00	2026-10-11 15:10:13.169622+00
-2515	Man, Fuck This House	man, fuck this house | brian asman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.179251+00	2026-10-11 15:10:13.179251+00
-2516	Candy Cain Kills	candy cain kills | brian mcauley	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.184984+00	2026-10-11 15:10:13.184984+00
-2518	Blood Moon	blood moon | britney s. lewis	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.20175+00	2026-10-11 15:10:13.20175+00
-2519	Slewfoot	slewfoot | brom	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.210426+00	2026-10-11 15:10:13.210426+00
-2520	A Haunting in the Arctic	a haunting in the arctic | c. j. cooke	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.218864+00	2026-10-11 15:10:13.218864+00
-2521	The Cut	the cut | c. j. dotson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.226587+00	2026-10-11 15:10:13.226587+00
-2522	Last to Leave the Room	last to leave the room | caitlin starling	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.236346+00	2026-10-11 15:10:13.236346+00
-2523	The Graceview Patient	the graceview patient | caitlin starling	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.241808+00	2026-10-11 15:10:13.241808+00
-2524	At the Bottom of the Garden	at the bottom of the garden | camilla bruce	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.252426+00	2026-10-11 15:10:13.252426+00
-2525	The Takeover	the takeover | cara tanamachi	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.280573+00	2026-10-11 15:10:13.280573+00
-2526	The Astrology House	the astrology house | carinn jade	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.292637+00	2026-10-11 15:10:13.292637+00
-2527	Code Word Romance	code word romance | carlie walker	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.303445+00	2026-10-11 15:10:13.303445+00
-2529	Mirrorland	mirrorland | carole johnstone	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.323684+00	2026-10-11 15:10:13.323684+00
-2530	Sugarcane	sugarcane | cassandra celia	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.330225+00	2026-10-11 15:10:13.330225+00
-2531	The Clinic	the clinic | cate quinn	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.33732+00	2026-10-11 15:10:13.33732+00
-2536	The Disappearing Act	the disappearing act | catherine steadman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.373808+00	2026-10-11 15:10:13.373808+00
-2537	Out Behind the Barn	out behind the barn | chad lutzke; john boden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.382742+00	2026-10-11 15:10:13.382742+00
-2539	The Farmhouse	the farmhouse | chelsea conradt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.398154+00	2026-10-11 15:10:13.398154+00
-2540	The Midnight Shift	the midnight shift | cheon seon-ran	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.404746+00	2026-10-11 15:10:13.404746+00
-2544	Falling	falling | christina lauren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.434117+00	2026-10-11 15:10:13.434117+00
-2545	Night Birds	night birds | christopher golden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.439478+00	2026-10-11 15:10:13.439478+00
-2549	Ghost Eaters	ghost eaters | clay mcleod chapman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.465777+00	2026-10-11 15:10:13.465777+00
-2550	Our Last Resort	our last resort | clemence michallon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.470211+00	2026-10-11 15:10:13.470211+00
-2551	Polybius	polybius | collin armstrong	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.481177+00	2026-10-11 15:10:13.481177+00
-2552	Suffer the Children	suffer the children | craig dilouie	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.487714+00	2026-10-11 15:10:13.487714+00
-2553	Something in the Walls	something in the walls | daisy pearce	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.494378+00	2026-10-11 15:10:13.494378+00
-2554	The Truth According to Amber	the truth according to amber | danica nava	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.500806+00	2026-10-11 15:10:13.500806+00
-2561	Aftertaste	aftertaste | daria lavelle	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.547819+00	2026-10-11 15:10:13.547819+00
-2562	Bad Man	bad man | dathan auerbach	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.554594+00	2026-10-11 15:10:13.554594+00
-2563	Withered Hill	withered hill | david barnett	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.561129+00	2026-10-11 15:10:13.561129+00
-2564	Maggie's Grave	maggie's grave | david sodergren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.566347+00	2026-10-11 15:10:13.566347+00
-2565	The Forgotten Island	the forgotten island | david sodergren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.570793+00	2026-10-11 15:10:13.570793+00
-2566	Summer of the Monsters	summer of the monsters | david sodergren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.575222+00	2026-10-11 15:10:13.575222+00
-2567	A Curious Beginning	a curious beginning | deanna raybourn	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.581721+00	2026-10-11 15:10:13.581721+00
-2570	Moderation	moderation | elaine castillo	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.602442+00	2026-10-11 15:10:13.602442+00
-2571	The Heartbreak Hotel	the heartbreak hotel | ellen o'clover	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.608963+00	2026-10-11 15:10:13.608963+00
-2572	Bad Date	bad date | ellery lloyd	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.61519+00	2026-10-11 15:10:13.61519+00
-2573	Anywhere With You	anywhere with you | ellie palmer	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.621967+00	2026-10-11 15:10:13.621967+00
-2575	Wild Eyes	wild eyes | elsie silver	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.635836+00	2026-10-11 15:10:13.635836+00
-2576	Gothictown	gothictown | emily carpenter	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.642515+00	2026-10-11 15:10:13.642515+00
-2577	Yours for the Season	yours for the season | emily stone	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.654899+00	2026-10-11 15:10:13.654899+00
-2579	We Are Always Tender With Our Dead	we are always tender with our dead | eric larocca	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.668435+00	2026-10-11 15:10:13.668435+00
-2580	Fall Too Well	fall too well | erin branscom	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.675114+00	2026-10-11 15:10:13.675114+00
-2581	Unromance	unromance | erin connor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.681581+00	2026-10-11 15:10:13.681581+00
-2582	Bake the Town Red	bake the town red | eva marks	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.688446+00	2026-10-11 15:10:13.688446+00
-2583	Change of Heart	change of heart | falon ballard	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.695408+00	2026-10-11 15:10:13.695408+00
-2584	Full Bloom	full bloom | francesca serritella	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.702249+00	2026-10-11 15:10:13.702249+00
-2585	The Next Best Fling	the next best fling | gabriella gamez	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.713585+00	2026-10-11 15:10:13.713585+00
-2586	Itch	itch | gemma amor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.71776+00	2026-10-11 15:10:13.71776+00
-2588	The Merge	the merge | grace walker	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.730863+00	2026-10-11 15:10:13.730863+00
-2589	We Sold Our Souls	we sold our souls | grady hendrix	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.735477+00	2026-10-11 15:10:13.735477+00
-2591	The Golden Couple	the golden couple | greer hendricks; sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.744323+00	2026-10-11 15:10:13.744323+00
-2595	Out of the Woods	out of the woods | hannah bonam-young	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.779693+00	2026-10-11 15:10:13.779693+00
-2596	Holiday Ever After	holiday ever after | hannah grace	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.784707+00	2026-10-11 15:10:13.784707+00
-2597	Same Paige	same paige | hannah jay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.793694+00	2026-10-11 15:10:13.793694+00
-2598	Maine Characters	maine characters | hannah orenstein	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.800653+00	2026-10-11 15:10:13.800653+00
-2599	The Search Party	the search party | hannah richell	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.807392+00	2026-10-11 15:10:13.807392+00
-2601	The Possession of Alba Diaz	the possession of alba diaz | isabel cañas	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.829302+00	2026-10-11 15:10:13.829302+00
-2602	The Darkest Half	the darkest half | j. a. redmerski	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.833744+00	2026-10-11 15:10:13.833744+00
-2604	Survivor	survivor | j. f. gonzalez	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.846782+00	2026-10-11 15:10:13.846782+00
-2605	Guava Flavored Lies	guava flavored lies | j.j. arias	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.853131+00	2026-10-11 15:10:13.853131+00
-2606	Spicy Little Curses	spicy little curses | j. t. geissinger	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.859687+00	2026-10-11 15:10:13.859687+00
-2608	The Strength of the Few	the strength of the few | james islington	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.870662+00	2026-10-11 15:10:13.870662+00
-2610	Flirting Lessons	flirting lessons | jasmine guillory	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.885747+00	2026-10-11 15:10:13.885747+00
-2611	Hidden Pictures	hidden pictures | jason rekulak	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.894946+00	2026-10-11 15:10:13.894946+00
-2612	Big Swiss	big swiss | jen beagin	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.90149+00	2026-10-11 15:10:13.90149+00
-2614	You Shouldn't Have Come Here	you shouldn't have come here | jeneva rose	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.915735+00	2026-10-11 15:10:13.915735+00
-2615	My Vampire Plus-One	my vampire plus-one | jenna levine	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.92266+00	2026-10-11 15:10:13.92266+00
-2616	I'm Glad My Mom Died	i'm glad my mom died | jennette mccurdy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.930345+00	2026-10-11 15:10:13.930345+00
-2617	Beneath the Stairs	beneath the stairs | jennifer fawcett	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.936972+00	2026-10-11 15:10:13.936972+00
-2618	The Butcher	the butcher | jennifer hillier	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.948304+00	2026-10-11 15:10:13.948304+00
-2619	My Darling Girl	my darling girl | jennifer mcmahon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.953235+00	2026-10-11 15:10:13.953235+00
-2620	I'll Be Home for Christmas	i'll be home for christmas | jenny bayliss	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.962301+00	2026-10-11 15:10:13.962301+00
-2621	Crafting for Sinners	crafting for sinners | jenny kiefer	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.966758+00	2026-10-11 15:10:13.966758+00
-2622	Open Wide	open wide | jessica gross	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.977949+00	2026-10-11 15:10:13.977949+00
-2623	The Ex Vows	the ex vows | jessica joyce	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.982525+00	2026-10-11 15:10:13.982525+00
-2624	Vera Wong's Guide to Snooping (on a Dead Man)	vera wong's guide to snooping (on a dead man) | jessie q. sutanto	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.99236+00	2026-10-11 15:10:13.99236+00
-2625	The Fiction Writer	the fiction writer | jillian cantor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.00775+00	2026-10-11 15:10:14.00775+00
-2628	Devil House	devil house | john darnielle	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.038454+00	2026-10-11 15:10:14.038454+00
-2632	It Waits in the Woods	it waits in the woods | josh malerman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.070185+00	2026-10-11 15:10:14.070185+00
-2633	Burn the Negative	burn the negative | josh winning	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.07668+00	2026-10-11 15:10:14.07668+00
-2636	No One Rides For Free	no one rides for free | judith sonnet	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.097511+00	2026-10-11 15:10:14.097511+00
-2637	Christmas at the Ranch	christmas at the ranch | julia mckay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.104075+00	2026-10-11 15:10:14.104075+00
-2638	Forget Me Not	forget me not | julie soto	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.114834+00	2026-10-11 15:10:14.114834+00
-2642	Welcome to Murder Week	welcome to murder week | karen dukess	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.142431+00	2026-10-11 15:10:14.142431+00
-2644	Bad for Business	bad for business | kat singleton	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.159695+00	2026-10-11 15:10:14.159695+00
-2647	Serial Killer Games	serial killer games | kate posey	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.189703+00	2026-10-11 15:10:14.189703+00
-2648	Fang Fiction	fang fiction | kate stayman-london	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.197911+00	2026-10-11 15:10:14.197911+00
-2649	Beautiful Nightmare	beautiful nightmare | katee robert	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.205365+00	2026-10-11 15:10:14.205365+00
-2650	A Love Most Fatal	a love most fatal | kath richards	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.21213+00	2026-10-11 15:10:14.21213+00
-2720	Overgrowth	overgrowth | mira grant	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.723411+00	2026-10-11 15:10:14.723411+00
-2651	The Bodyguard	the bodyguard | katherine center	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.218797+00	2026-10-11 15:10:14.218797+00
-2652	High Season	high season | katie bishop	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.228568+00	2026-10-11 15:10:14.228568+00
-2653	Knives, Seasoning, and a Dash of Love	knives, seasoning, and a dash of love | katrina kwan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.235765+00	2026-10-11 15:10:14.235765+00
-2654	Enchantra	enchantra | kaylie smith	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.240213+00	2026-10-11 15:10:14.240213+00
-2656	Party of Liars	party of liars | kelsey cox	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.256083+00	2026-10-11 15:10:14.256083+00
-2658	House of Beth	house of beth | kerry cullen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.272613+00	2026-10-11 15:10:14.272613+00
-2659	Mister Magic	mister magic | kiersten white	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.276979+00	2026-10-11 15:10:14.276979+00
-2660	My Boyfriends Are All Monsters	my boyfriends are all monsters | kimberly lemming	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.285972+00	2026-10-11 15:10:14.285972+00
-2663	Big Nick Energy	big nick energy | kristen bailey	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.304806+00	2026-10-11 15:10:14.304806+00
-2671	Love Me Stalk Me	love me stalk me | laura bishop	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.358181+00	2026-10-11 15:10:14.358181+00
-2700	Love at First Sighting	love at first sighting | mallory marlowe	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.571559+00	2026-10-11 15:10:14.571559+00
-2702	Bad Things Happened In This Room	bad things happened in this room | marie still	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.584971+00	2026-10-11 15:10:14.584971+00
-2703	Thirst	thirst | marina yuszczuk	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.592109+00	2026-10-11 15:10:14.592109+00
-2705	The Darkest Water	the darkest water | mark edwards	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.606806+00	2026-10-11 15:10:14.606806+00
-2706	The Wasp Trap	the wasp trap | mark edwards	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.61634+00	2026-10-11 15:10:14.61634+00
-2707	She's Not Sorry	she's not sorry | mary kubica	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.620695+00	2026-10-11 15:10:14.620695+00
-2710	The North Line	the north line | matt riordan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.645909+00	2026-10-11 15:10:14.645909+00
-2711	Feeders	feeders | matt serafini	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.659537+00	2026-10-11 15:10:14.659537+00
-2713	My Husband	my husband | maud ventura	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.672452+00	2026-10-11 15:10:14.672452+00
-2714	Suburban Hell	suburban hell | maureen kilmer	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.679366+00	2026-10-11 15:10:14.679366+00
-2717	The Perfect Rom-Com	the perfect rom-com | melissa ferguson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.702561+00	2026-10-11 15:10:14.702561+00
-2718	The Once and Future Me	the once and future me | melissa pace	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.709406+00	2026-10-11 15:10:14.709406+00
-2719	The October Film Haunt	the october film haunt | michael wehunt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.716787+00	2026-10-11 15:10:14.716787+00
-2721	Smile for the Cameras	smile for the cameras | miranda smith	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.731945+00	2026-10-11 15:10:14.731945+00
-2722	Unseen	unseen | molly burke	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.742+00	2026-10-11 15:10:14.742+00
-2723	Wrath of an Exile	wrath of an exile | monty jay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.7506+00	2026-10-11 15:10:14.7506+00
-2724	Nothing But the Rain	nothing but the rain | naomi salman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.758945+00	2026-10-11 15:10:14.758945+00
-2726	Crypt of the Moon Spider	crypt of the moon spider | nathan ballingrud	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.77004+00	2026-10-11 15:10:14.77004+00
-2727	The Burial Tide	the burial tide | neil sharpson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.774947+00	2026-10-11 15:10:14.774947+00
-2728	The Handyman Method	the handyman method | andrew sullivan; nick cutter	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.785652+00	2026-10-11 15:10:14.785652+00
-2729	Where He Left Me	where he left me | nicole baart	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.795457+00	2026-10-11 15:10:14.795457+00
-2733	Murder by Memory	murder by memory | olivia waite	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.825242+00	2026-10-11 15:10:14.825242+00
-2734	Gifted & Talented	gifted & talented | olivie blake	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.832322+00	2026-10-11 15:10:14.832322+00
-2735	Wolf.e	wolf.e | paisley hope	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.83902+00	2026-10-11 15:10:14.83902+00
-2737	The Confessions	the confessions | paul bradley carr	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.856579+00	2026-10-11 15:10:14.856579+00
-2738	Horror Movie	horror movie | paul tremblay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.861489+00	2026-10-11 15:10:14.861489+00
-2739	The Beast You Are	the beast you are | paul tremblay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.868453+00	2026-10-11 15:10:14.868453+00
-2743	Tantrum	tantrum | rachel eve moulton	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.900822+00	2026-10-11 15:10:14.900822+00
-2744	Play Nice	play nice | rachel harrison	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.925235+00	2026-10-11 15:10:14.925235+00
-2745	Learning Curves	learning curves | rachel lacey	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.939213+00	2026-10-11 15:10:14.939213+00
-2750	Space Vampire	space vampire | ruby dixon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.99616+00	2026-10-11 15:10:14.99616+00
-2751	The Ice Retreat	the ice retreat | ruth kelly	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.002811+00	2026-10-11 15:10:15.002811+00
-2752	Zero Days	zero days | ruth ware	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.009244+00	2026-10-11 15:10:15.009244+00
-2753	The Woman in Suite 11	the woman in suite 11 | ruth ware	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.016466+00	2026-10-11 15:10:15.016466+00
-2756	Savage Blooms	savage blooms | s. t. gibson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.03507+00	2026-10-11 15:10:15.03507+00
-2760	The Ex-Wives Club	the ex-wives club | sally hepworth	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.055971+00	2026-10-11 15:10:15.055971+00
-2761	I Was Feeling Epic	i was feeling epic | samantha highfill	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.06347+00	2026-10-11 15:10:15.06347+00
-2762	True Crime	true crime | samantha kolesnik	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.072852+00	2026-10-11 15:10:15.072852+00
-2763	The Cabin in the Woods	the cabin in the woods | sarah alderson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.08161+00	2026-10-11 15:10:15.08161+00
-2766	A Merry Little Lie	a merry little lie | sarah morgan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.097434+00	2026-10-11 15:10:15.097434+00
-2767	Gone Tonight	gone tonight | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.102566+00	2026-10-11 15:10:15.102566+00
-2768	House of Glass	house of glass | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.107596+00	2026-10-11 15:10:15.107596+00
-2769	The Locked Ward	the locked ward | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.112109+00	2026-10-11 15:10:15.112109+00
-2772	Volatile Memory	volatile memory | seth haddon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.136705+00	2026-10-11 15:10:15.136705+00
-2773	I Did Warn Her	i did warn her | sian gilbert	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.143331+00	2026-10-11 15:10:15.143331+00
-2774	The Book of Cold Cases	the book of cold cases | simone st. james	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.149561+00	2026-10-11 15:10:15.149561+00
-2775	Tart	tart | slutty cheff	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.156691+00	2026-10-11 15:10:15.156691+00
-2776	Forget Me Not	forget me not | stacy willingham	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.170686+00	2026-10-11 15:10:15.170686+00
-2777	The Threshing Floor	the threshing floor | steph nelson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.178052+00	2026-10-11 15:10:15.178052+00
-2778	Overdue	overdue | stephanie perkins	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.18478+00	2026-10-11 15:10:15.18478+00
-2780	Triple Sec	triple sec | tj alexander	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.201597+00	2026-10-11 15:10:15.201597+00
-2783	A House With Good Bones	a house with good bones | t. kingfisher	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.226852+00	2026-10-11 15:10:15.226852+00
-2785	Left of Forever	left of forever | tarah dewitt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.243973+00	2026-10-11 15:10:15.243973+00
-2786	Love Letters to a Serial Killer	love letters to a serial killer | tasha coryell	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.256532+00	2026-10-11 15:10:15.256532+00
-2787	Such Lovely Skin	such lovely skin | tatiana schlote-bonne	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.271611+00	2026-10-11 15:10:15.271611+00
-2788	Hairpin Bridge	hairpin bridge | taylor adams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.27842+00	2026-10-11 15:10:15.27842+00
-2789	The Inheritance	the inheritance | trisha sakhlecha	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.285742+00	2026-10-11 15:10:15.285742+00
-2790	The Second Death of Locke	the second death of locke | v. l. bovalino	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.297247+00	2026-10-11 15:10:15.297247+00
-2791	The Honeycrisp Orchard Inn	the honeycrisp orchard inn | valerie bowman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.305742+00	2026-10-11 15:10:15.305742+00
-2792	Someone Knows	someone knows | vi keeland	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.313995+00	2026-10-11 15:10:15.313995+00
-2793	The Unraveling	the unraveling | vi keeland	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.32409+00	2026-10-11 15:10:15.32409+00
-2794	Escape Velocity	escape velocity | victor manibo	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.334178+00	2026-10-11 15:10:15.334178+00
-2796	Bourbon and Secrets	bourbon and secrets | victoria wilder	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.347841+00	2026-10-11 15:10:15.347841+00
-2797	Bourbon and Proof	bourbon and proof | victoria wilder	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.353343+00	2026-10-11 15:10:15.353343+00
-2798	We Came to Welcome You	we came to welcome you | vincent tirado	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.363903+00	2026-10-11 15:10:15.363903+00
-2809	The Long Game	the long game | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.472361+00	2026-10-11 15:10:15.472361+00
-2811	The Wind Weaver	the wind weaver | julie johnson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.489054+00	2026-10-11 15:10:15.489054+00
-2816	Game Changer	game changer | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.525094+00	2026-10-11 15:10:15.525094+00
-2817	Role Model	role model | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.529642+00	2026-10-11 15:10:15.529642+00
-2818	Common Goal	common goal | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.534563+00	2026-10-11 15:10:15.534563+00
-2819	Tough Guy	tough guy | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.538992+00	2026-10-11 15:10:15.538992+00
-2820	Pretty Vicious	pretty vicious | lexi davis	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.546997+00	2026-10-11 15:10:15.546997+00
-2822	The Storm	the storm | rachel hawkins	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.56391+00	2026-10-11 15:10:15.56391+00
-2827	Paper Cut	paper cut | rachel taff	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.592495+00	2026-10-11 15:10:15.592495+00
-2833	The Exes	the exes | leodora darlington	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.628166+00	2026-10-11 15:10:15.628166+00
-2835	Warning Signs	warning signs | tracy sierra	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.655932+00	2026-10-11 15:10:15.655932+00
-2837	Her Last Breath	her last breath | taylor adams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.668957+00	2026-10-11 15:10:15.668957+00
-2839	The Re-Do List	the re-do list | denise williams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.682738+00	2026-10-11 15:10:15.682738+00
-2842	Nowhere Burning	nowhere burning | catriona ward	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.699537+00	2026-10-11 15:10:15.699537+00
-2843	Sap and Secrets	sap and secrets | daphne elliot	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.70761+00	2026-10-11 15:10:15.70761+00
-2844	Accidentally Yours	accidentally yours | christina lauren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.712506+00	2026-10-11 15:10:15.712506+00
-2845	Time Will Tell	time will tell | hannah bonam-young	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.717352+00	2026-10-11 15:10:15.717352+00
-2847	Second Act Romance	second act romance | julie soto	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.727537+00	2026-10-11 15:10:15.727537+00
-2848	A Play for Love	a play for love | trilina pucci	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.734542+00	2026-10-11 15:10:15.734542+00
-2854	Half City	half city | kate golden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.792161+00	2026-10-11 15:10:15.792161+00
-2856	Whidbey	whidbey | t kira mahealani madden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.811106+00	2026-10-11 15:10:15.811106+00
-2859	A Girl Like Her	a girl like her | talia hibbert	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.830447+00	2026-10-11 15:10:15.830447+00
-2860	How to Survive in the Woods	how to survive in the woods | kat rosenfield	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.837124+00	2026-10-11 15:10:15.837124+00
-2865	Don't Ask Why	don't ask why | steph nelson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.888652+00	2026-10-11 15:10:15.888652+00
-2867	The Move	the move | j. p. delaney	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.899072+00	2026-10-11 15:10:15.899072+00
-2868	Served Him Right	served him right | lisa unger	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.904456+00	2026-10-11 15:10:15.904456+00
-2869	How to Write a Love Story	how to write a love story | catherine walsh	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.911431+00	2026-10-11 15:10:15.911431+00
-2870	Love Song	love song | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.916145+00	2026-10-11 15:10:15.916145+00
-2871	You Did Nothing Wrong	you did nothing wrong | c. g. drews	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.92304+00	2026-10-11 15:10:15.92304+00
-2872	You Should Have Been Nicer to My Mom	you should have been nicer to my mom | vincent tirado	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.92757+00	2026-10-11 15:10:15.92757+00
-2873	Strangers in the Villa	strangers in the villa | robyn harding	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.934531+00	2026-10-11 15:10:15.934531+00
-2874	Please Don't Go	please don't go | e. salvador	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.941798+00	2026-10-11 15:10:15.941798+00
-2876	A Promise So Bold and Broken	a promise so bold and broken | sophia st. germain	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.962588+00	2026-10-11 15:10:15.962588+00
-2877	A Bond So Fierce and Fragile	a bond so fierce and fragile | sophia st. germain	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.967363+00	2026-10-11 15:10:15.967363+00
-2878	A Fate So Dark and Delicate	a fate so dark and delicate | sophia st. germain	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.972393+00	2026-10-11 15:10:15.972393+00
-2880	Sorry For Your Loss	sorry for your loss | georgia mcveigh	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.986495+00	2026-10-11 15:10:15.986495+00
-2881	A Good Person	a good person | kirsten king	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.993473+00	2026-10-11 15:10:15.993473+00
-2882	The Bridge Back To You	the bridge back to you | riss m. neilson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.999959+00	2026-10-11 15:10:15.999959+00
-2884	Kiss, Mary, Kill	kiss, mary, kill | lori gold	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.018951+00	2026-10-11 15:10:16.018951+00
-2885	A Killer In the Family	a killer in the family | amin ahmad	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.027415+00	2026-10-11 15:10:16.027415+00
-2886	Enemies to Lovers	enemies to lovers | alisha rai	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.034935+00	2026-10-11 15:10:16.034935+00
-2889	The Summer I Found You	the summer i found you | jennifer o'brien	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.050648+00	2026-10-11 15:10:16.050648+00
-2891	While You Were Seething	while you were seething | charlotte stein	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.063749+00	2026-10-11 15:10:16.063749+00
-2893	The Write Off	the write off | kara mcdowell	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.077334+00	2026-10-11 15:10:16.077334+00
-2895	Morsell	morsell | carter keane	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.088797+00	2026-10-11 15:10:16.088797+00
-2897	The Drop	the drop | s.r. masters	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.099678+00	2026-10-11 15:10:16.099678+00
-2899	Watership Down	watership down | richard adams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.111536+00	2026-10-11 15:10:16.111536+00
-2903	How (Not) To Raise The Dead	how (not) to raise the dead | rachael chadwick	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.136982+00	2026-10-11 15:10:16.136982+00
-2906	The Author Weekend	the author weekend | laura zigman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.158705+00	2026-10-11 15:10:16.158705+00
-2909	Mine to Hunt	mine to hunt | c. o. wheel; tanya das	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.180633+00	2026-10-11 15:10:16.180633+00
-2910	The Last Page	the last page | katie holt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.187097+00	2026-10-11 15:10:16.187097+00
-2911	The Dorians	the dorians | nick cutter	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.191748+00	2026-10-11 15:10:16.191748+00
-2912	Until Death	until death | mary berman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.19878+00	2026-10-11 15:10:16.19878+00
-2917	It Happened One Murder	it happened one murder | liz lawson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.231523+00	2026-10-11 15:10:16.231523+00
-2919	The Romance Line	the romance line | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.243352+00	2026-10-11 15:10:16.243352+00
-2920	The Proposal Play	the proposal play | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.24807+00	2026-10-11 15:10:16.24807+00
-2921	The Girlfriend Zone	the girlfriend zone | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.252688+00	2026-10-11 15:10:16.252688+00
-2922	The Overtime Kiss	the overtime kiss | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.257198+00	2026-10-11 15:10:16.257198+00
-2923	The Flirting Game	the flirting game | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.261687+00	2026-10-11 15:10:16.261687+00
-2925	When Sparks Fly	when sparks fly | monica murphy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.273494+00	2026-10-11 15:10:16.273494+00
-2926	The Risk	the risk | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.278038+00	2026-10-11 15:10:16.278038+00
-2927	The Chase	the chase | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.283205+00	2026-10-11 15:10:16.283205+00
-2928	The Play	the play | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.287913+00	2026-10-11 15:10:16.287913+00
-2929	The Dare	the dare | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.292881+00	2026-10-11 15:10:16.292881+00
-2930	The Charlie Method	the charlie method | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.297738+00	2026-10-11 15:10:16.297738+00
-2931	The Graham Effect	the graham effect | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.30247+00	2026-10-11 15:10:16.30247+00
-2933	Crown Me Yours	crown me yours | liv zander	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.314467+00	2026-10-11 15:10:16.314467+00
-2934	Midnight Message	midnight message | avina st. graves	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.321322+00	2026-10-11 15:10:16.321322+00
-2936	The Girl in the Lake	the girl in the lake | lauren oliver	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.33239+00	2026-10-11 15:10:16.33239+00
-2937	Marion	marion | leah rowan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.339392+00	2026-10-11 15:10:16.339392+00
-2942	Girl's Girl	girl's girl | sonia feldman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.382605+00	2026-10-11 15:10:16.382605+00
-2943	The Song of Salt and Smoke	the song of salt and smoke | seren rose	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.389082+00	2026-10-11 15:10:16.389082+00
-2968	The Roommate Rule	the roommate rule | georgia stone	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.535858+00	2026-10-11 15:10:16.535858+00
-2982	Fruit Fly	fruit fly | josh silver	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.627065+00	2026-10-11 15:10:16.627065+00
-2986	Stay Buried	stay buried | jennifer mcmahon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.64963+00	2026-10-11 15:10:16.64963+00
-2987	Colt	colt | jessica peterson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.656853+00	2026-10-11 15:10:16.656853+00
-2993	Kiss Slay Replay	kiss slay replay | rachel harrison	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.692846+00	2026-10-11 15:10:16.692846+00
-3000	Keep Them Close	keep them close | david ellis	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.902251+00	2026-10-11 15:10:16.902251+00
-3011	The Women in White	the women in white | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.014931+00	2026-10-11 15:10:17.014931+00
-3012	She's a Doll	she's a doll | barbara truelove	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.027492+00	2026-10-11 15:10:17.027492+00
-3015	Fallow	fallow | sarah anderson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.046548+00	2026-10-11 15:10:17.046548+00
-3016	Serenity Falls	serenity falls | c. j. tudor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.050968+00	2026-10-11 15:10:17.050968+00
-3027	Shield of Sparrows	shield of sparrows | devney perry	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.364144+00	2026-10-11 15:10:17.364144+00
-3028	A Deal With the Elf King	a deal with the elf king | elise kova	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.384193+00	2026-10-11 15:10:17.384193+00
-2286	The Watchers	the watchers | a. m. shine	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.085226+00	2026-10-11 15:10:17.4652+00
-2287	Every Last Fear	every last fear | alex finlay	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.185456+00	2026-10-11 15:10:17.468338+00
-2288	All Good People Here	all good people here | ashley flowers	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.365746+00	2026-10-11 15:10:17.468374+00
-2289	Iris Kelly Doesn't Date	iris kelly doesn't date | ashley herring blake	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.458892+00	2026-10-11 15:10:17.468387+00
-2290	The Switch	the switch | beth o'leary	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.471538+00	2026-10-11 15:10:17.468397+00
-2291	Dark Matter	dark matter | blake crouch	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.483822+00	2026-10-11 15:10:17.468407+00
-2292	The Taking of Annie Thorne	the taking of annie thorne | c. j. tudor	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.5621+00	2026-10-11 15:10:17.468416+00
-2293	The Trap	the trap | catherine ryan howard	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.666573+00	2026-10-11 15:10:17.468429+00
-2294	The Nothing Man	the nothing man | catherine ryan howard	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.757836+00	2026-10-11 15:10:17.468439+00
-2295	The Quiet Tenant	the quiet tenant | clemence michallon	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.777925+00	2026-10-11 15:10:17.468456+00
-2296	Mickey7	mickey7 | edward ashton	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.882861+00	2026-10-11 15:10:17.46847+00
-2297	Reckless	reckless | elsie silver	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.97831+00	2026-10-11 15:10:17.468483+00
-2298	Powerless	powerless | elsie silver	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.063159+00	2026-10-11 15:10:17.468493+00
-2299	The Room	the room | emma donoghue	2010	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.085775+00	2026-10-11 15:10:17.468508+00
-2300	The Inmate	the inmate | freida mcfadden	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.166103+00	2026-10-11 15:10:17.468519+00
-2301	The Boyfriend	the boyfriend | freida mcfadden	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.176922+00	2026-10-11 15:10:17.468529+00
-2302	Never Lie	never lie | freida mcfadden	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.187347+00	2026-10-11 15:10:17.46854+00
-2303	Next of Kin	next of kin | hannah bonam-young	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.262373+00	2026-10-11 15:10:17.46855+00
-2304	Good Girl, Bad Blood	good girl, bad blood | holly jackson	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.359648+00	2026-10-11 15:10:17.468559+00
-2305	As Good as Dead	as good as dead | holly jackson	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.373033+00	2026-10-11 15:10:17.468568+00
-2306	Lifelike	lifelike | jay kristoff	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.384209+00	2026-10-11 15:10:17.468579+00
-2307	Things We Do In the Dark	things we do in the dark | jennifer hillier	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.46758+00	2026-10-11 15:10:17.468591+00
-2308	Keep it in the Family	keep it in the family | john marrs	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.484903+00	2026-10-11 15:10:17.468617+00
-2309	What Lies Between Us	what lies between us | john marrs	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.559574+00	2026-10-11 15:10:17.468628+00
-2310	When You Disappeared	when you disappeared | john marrs	2013	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.570637+00	2026-10-11 15:10:17.468638+00
-2311	The New Wife	the new wife | j. p. delaney	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.669763+00	2026-10-11 15:10:17.468653+00
-2312	Leave Me Behind	leave me behind | k.m. moronova	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.760862+00	2026-10-11 15:10:17.468664+00
-2313	The Ministry of Time	the ministry of time | kaliane bradley	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.774006+00	2026-10-11 15:10:17.468674+00
-2314	You, Again	you, again | kate goldbeck	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.861886+00	2026-10-11 15:10:17.468686+00
-2315	Phantasma	phantasma | kaylie smith	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.875369+00	2026-10-11 15:10:17.468697+00
-2316	Nocticadia	nocticadia | keri lake	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.887954+00	2026-10-11 15:10:17.468707+00
-2317	End of Story	end of story | louise swanson	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.97153+00	2026-10-11 15:10:17.468719+00
-2318	The Paris Apartment	the paris apartment | lucy foley	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.982319+00	2026-10-11 15:10:17.468728+00
-2319	All Rhodes Lead Here	all rhodes lead here | mariana zapata	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.062855+00	2026-10-11 15:10:17.468738+00
-2320	The Psychopath Next Door	the psychopath next door | mark edwards	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.074862+00	2026-10-11 15:10:17.468747+00
-2321	Local Woman Missing	local woman missing | mary kubica	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.155733+00	2026-10-11 15:10:17.468757+00
-2322	A Brush With Love	a brush with love | mazey eddings	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.168788+00	2026-10-11 15:10:17.468766+00
-2323	Till Summer Do Us Part	till summer do us part | meghan quinn	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.182834+00	2026-10-11 15:10:17.468776+00
-2324	Don't Eat the Pie	don't eat the pie | monique asher	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.277568+00	2026-10-11 15:10:17.468787+00
-2325	Chain-Gang All-Stars	chain-gang all-stars | nana kwame adjei-brenyah	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.366431+00	2026-10-11 15:10:17.468797+00
-2326	Don't Let Her Stay	don't let her stay | nicola sanders	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.380608+00	2026-10-11 15:10:17.468807+00
-2327	Business or Pleasure	business or pleasure | rachel lynn solomon	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.569123+00	2026-10-11 15:10:17.46882+00
-2328	The It Girl	the it girl | ruth ware	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.670259+00	2026-10-11 15:10:17.46883+00
-2329	Happy Medium	happy medium | sarah adler	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.761122+00	2026-10-11 15:10:17.468841+00
-2330	Alchemised	alchemised | senlinyu	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.786461+00	2026-10-11 15:10:17.468852+00
-2331	Brutal Prince	brutal prince | sophie lark	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.87685+00	2026-10-11 15:10:17.468863+00
-2332	Firestarter	firestarter | stephen king	1980	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.172923+00	2026-10-11 15:10:17.468882+00
-2333	Seven Deaths of Evelyn Hardcastle	seven deaths of evelyn hardcastle | stuart turton	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.274208+00	2026-10-11 15:10:17.468892+00
-2334	Only Human	only human | sylvain neuvel	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.28468+00	2026-10-11 15:10:17.468901+00
-2335	Waking Gods	waking gods | sylvain neuvel	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.376981+00	2026-10-11 15:10:17.468909+00
-2336	The Twisted Ones	the twisted ones | t. kingfisher	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.459452+00	2026-10-11 15:10:17.468918+00
-2337	Savor It	savor it | tarah dewitt	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.482147+00	2026-10-11 15:10:17.468928+00
-2338	Bury Our Bones in the Midnight Soil	bury our bones in the midnight soil | v. e. schwab	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.563786+00	2026-10-11 15:10:17.468937+00
-2339	We Spread	we spread | iain reid	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.579144+00	2026-10-11 15:10:17.468945+00
-2340	Dungeon Crawler Carl	dungeon crawler carl | matt dinniman	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.784022+00	2026-10-11 15:10:17.46896+00
-2341	Still Beating	still beating | jennifer hartmann	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.075444+00	2026-10-11 15:10:17.468976+00
-2342	Ready or Not	ready or not | cara bastone	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.379122+00	2026-10-11 15:10:17.468997+00
-2343	The Housemaid Is Watching	the housemaid is watching | freida mcfadden	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.465339+00	2026-10-11 15:10:17.469007+00
-2344	Ex Vows	ex vows | jessica joyce	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.483561+00	2026-10-11 15:10:17.469017+00
-2345	Next to You	next to you | hannah bonam-young	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.572679+00	2026-10-11 15:10:17.469026+00
-2346	The Fake Out	the fake out | stephanie archer	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.603413+00	2026-10-11 15:10:17.469035+00
-2347	The Wingman	the wingman | stephanie archer	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.66621+00	2026-10-11 15:10:17.469043+00
-2348	Revolve	revolve | bal khabra	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.725646+00	2026-10-11 15:10:17.469053+00
-2349	Fall I Want	fall i want | lyra parish	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.764462+00	2026-10-11 15:10:17.469063+00
-2350	Praise	praise | sara cate	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.971007+00	2026-10-11 15:10:17.469079+00
-2351	Hopeless	hopeless | elsie silver	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.058183+00	2026-10-11 15:10:17.469088+00
-2352	King of Pride	king of pride | ana huang	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.272023+00	2026-10-11 15:10:17.469101+00
-2353	King of Greed	king of greed | ana huang	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.364714+00	2026-10-11 15:10:17.46911+00
-2354	The Christmas Tree Farm	the christmas tree farm | laurie gilmore	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.381717+00	2026-10-11 15:10:17.469118+00
-2355	Blood Over Bright Haven	blood over bright haven | m. l. wang	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.468731+00	2026-10-11 15:10:17.469128+00
-2356	Willing Prey	willing prey | allie oleander	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.66103+00	2026-10-11 15:10:17.469141+00
-2357	Daddy Issues	daddy issues | kate goldbeck	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.673102+00	2026-10-11 15:10:17.46915+00
-2358	Count My Lies	count my lies | sophie stava	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.687683+00	2026-10-11 15:10:17.46916+00
-2359	Haunting the Hunter	haunting the hunter | hanna harp	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.774179+00	2026-10-11 15:10:17.469171+00
-2360	Furybound	furybound | sable sorensen	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.85978+00	2026-10-11 15:10:17.46918+00
-2361	The Deep	the deep | nick cutter	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.873126+00	2026-10-11 15:10:17.469188+00
-2362	What Happens in Amsterdam	what happens in amsterdam | rachel lynn solomon	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.965082+00	2026-10-11 15:10:17.469197+00
-2363	The Wild Card	the wild card | stephanie archer	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.976612+00	2026-10-11 15:10:17.469206+00
-2364	Gloves Off	gloves off | stephanie archer	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.060242+00	2026-10-11 15:10:17.469216+00
-2365	Broken Dove	broken dove | dani francis	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.269336+00	2026-10-11 15:10:17.469231+00
-2366	Dear Reader	dear reader | tate james	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.28246+00	2026-10-11 15:10:17.469241+00
-2367	Great Big Beautiful Life	great big beautiful life | emily henry	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.361307+00	2026-10-11 15:10:17.469249+00
-2368	Rook & Rebel	rook & rebel | kate crew	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.375203+00	2026-10-11 15:10:17.471367+00
-2369	Good Girls Don't Die	good girls don't die | christina henry	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.385658+00	2026-10-11 15:10:17.471405+00
-2370	Just for the Summer	just for the summer | abby jimenez	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.466148+00	2026-10-11 15:10:17.471417+00
-2371	Black Sheep	black sheep | rachel harrison	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.561179+00	2026-10-11 15:10:17.471427+00
-2372	Embrace	embrace | bal khabra	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.577153+00	2026-10-11 15:10:17.471436+00
-2373	Don't Let Him In	don't let him in | lisa jewell	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.755778+00	2026-10-11 15:10:17.471447+00
-2374	Daggermouth	daggermouth | h. m. wolfe	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.775683+00	2026-10-11 15:10:17.471459+00
-2375	Into the Fading Twilight	into the fading twilight | catherine cowles	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.86281+00	2026-10-11 15:10:17.471468+00
-2376	Harvest Season	harvest season | brynne weaver	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.963073+00	2026-10-11 15:10:17.471479+00
-2377	Prince of Swords	prince of swords | elise kova	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.974534+00	2026-10-11 15:10:17.471488+00
-2378	Any Man	any man | amber tambglyn	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.074125+00	2026-10-11 15:10:17.4715+00
-2379	Insatiable	insatiable | leigh rivers	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.255793+00	2026-10-11 15:10:17.471512+00
-2380	The Divorce	the divorce | freida mcfadden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.269779+00	2026-10-11 15:10:17.47152+00
-2381	A Court of Thorns and Roses	a court of thorns and roses | sarah j. maas	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.358317+00	2026-10-11 15:10:17.471529+00
-2382	Bulletproof	bulletproof | k.m. moronova	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.374032+00	2026-10-11 15:10:17.471538+00
-2383	The Night We Met	the night we met | abby jimenez	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.455695+00	2026-10-11 15:10:17.471547+00
-2384	Bourbon & Lies	bourbon & lies | victoria wilder	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.558419+00	2026-10-11 15:10:17.471558+00
-2385	There Is No Antimimetics Division	there is no antimimetics division | qntm	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.66969+00	2026-10-11 15:10:17.471571+00
-2386	Free Falling	free falling | lyla sage	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.759479+00	2026-10-11 15:10:17.47158+00
-2387	Bonfire and Bliss Bookstore	bonfire and bliss bookstore | brittanee nicole	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.773841+00	2026-10-11 15:10:17.47159+00
-2388	They Know If You've Been Bad or Good	they know if you've been bad or good | alta hensley	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.858294+00	2026-10-11 15:10:17.471599+00
-2389	Bourbon & Proof	bourbon & proof | victoria wilder	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.961087+00	2026-10-11 15:10:17.471611+00
-2390	Little Stranger	little stranger | leigh rivers	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.972079+00	2026-10-11 15:10:17.471619+00
-2391	Little Liar	little liar | leigh rivers	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.98323+00	2026-10-11 15:10:17.471628+00
-2392	Extracurricular	extracurricular | rachel lynn solomon	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:53.062768+00	2026-10-11 15:10:17.471637+00
-2393	Beneath a Midnight Moon	beneath a midnight moon | catherine cowles	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:53.074229+00	2026-10-11 15:10:17.471645+00
-2394	Victorious	victorious | v. e. schwab	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:53.084664+00	2026-10-11 15:10:17.471654+00
-2395	Lock Every Door	lock every door | riley sager	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:53.369438+00	2026-10-11 15:10:17.471673+00
-2396	Never Never	never never | colleen hoover; tarryn fisher	2015	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:56.468077+00	2026-10-11 15:10:17.471783+00
-2398	City of Bones	city of bones | cassandra clare	2007	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:59.962057+00	2026-10-11 15:10:17.471923+00
-2399	City of Ashes	city of ashes | cassandra clare	2008	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:59.973482+00	2026-10-11 15:10:17.471933+00
-2400	Dark Places	dark places | gillian flynn	2009	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:00.075785+00	2026-10-11 15:10:17.471946+00
-2401	Insatiable	insatiable | meg cabot	2010	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:00.663761+00	2026-10-11 15:10:17.471973+00
-2402	Verity	verity | colleen hoover	2018	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:01.673027+00	2026-10-11 15:10:17.473331+00
-2403	The Dark Forest	the dark forest | liu cixin	2008	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:01.762952+00	2026-10-11 15:10:17.473349+00
-2404	The Bromance Book Club	the bromance book club | lyssa kay adams	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:01.879219+00	2026-10-11 15:10:17.473365+00
-2405	Die Again	die again | tess gerritsen	2014	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:02.863658+00	2026-10-11 15:10:17.473394+00
-2406	Too Late	too late | colleen hoover	2016	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:03.264953+00	2026-10-11 15:10:17.473413+00
-2407	Frankenstein	frankenstein | marry shelly	1818	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:03.865315+00	2026-10-11 15:10:17.473441+00
-2408	The Elite	the elite | kiera cass	2013	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:03.962863+00	2026-10-11 15:10:17.473452+00
-2409	The Selection	the selection | kiera cass	2012	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:03.974517+00	2026-10-11 15:10:17.473461+00
-2410	Always and Forever, Lara Jean	always and forever, lara jean | jenny han	2017	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:04.055771+00	2026-10-11 15:10:17.473472+00
-2411	The Sinner	the sinner | tess gerritsen	2003	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.078168+00	2026-10-11 15:10:17.473482+00
-2412	The Silent Girl	the silent girl | tess gerritsen	2011	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.165322+00	2026-10-11 15:10:17.47349+00
-2413	November 9	november 9 | colleen hoover	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.369867+00	2026-10-11 15:10:17.47351+00
-2414	Haunted	haunted | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.38323+00	2026-10-11 15:10:17.473519+00
-2415	The Dead Lifeguard	the dead lifeguard | r. l. stine	1996	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.475846+00	2026-10-11 15:10:17.473528+00
-2416	The Prom Queen	the prom queen | r. l. stine	1992	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.488842+00	2026-10-11 15:10:17.473537+00
-2417	All-Night Party	all-night party | r. l. stine	1996	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.561337+00	2026-10-11 15:10:17.475299+00
-2418	Sunburn	sunburn | r. l. stine	1992	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.57615+00	2026-10-11 15:10:17.475318+00
-2419	The Face	the face | r. l. stine	1994	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.662035+00	2026-10-11 15:10:17.475328+00
-2420	Locker 13	locker 13 | r. l. stine	2000	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.673956+00	2026-10-11 15:10:17.475337+00
-2421	They Call Me Creature	they call me creature | r. l. stine	2001	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.760732+00	2026-10-11 15:10:17.475346+00
-2422	The Fire Game	the fire game | r. l. stine	1991	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.774963+00	2026-10-11 15:10:17.475355+00
-2423	Double Date	double date | r. l. stine	1993	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.975822+00	2026-10-11 15:10:17.475373+00
-2424	The Wrong Number	the wrong number | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.067738+00	2026-10-11 15:10:17.475382+00
-2425	Cat	cat | r. l. stine	1996	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.158861+00	2026-10-11 15:10:17.475391+00
-2426	Don't Forget Me!	don't forget me! | r. l. stine	2000	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.272516+00	2026-10-11 15:10:17.475406+00
-2427	My Name is Evil	my name is evil | r. l. stine	2000	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.284076+00	2026-10-11 15:10:17.475415+00
-2428	The Surprise Party	the surprise party | r. l. stine	1989	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.36202+00	2026-10-11 15:10:17.475424+00
-2429	The Hunting Party	the hunting party | lucy foley	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.8746+00	2026-10-11 15:10:17.475452+00
-2430	Wilder Girls	wilder girls | rory power	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:05.976216+00	2026-10-11 15:10:17.475466+00
-2431	The Turn of the Key	the turn of the key | ruth ware	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.061947+00	2026-10-11 15:10:17.475476+00
-2432	Ready Player One	ready player one | ernest cline	2011	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.076373+00	2026-10-11 15:10:17.475486+00
-2433	The Sun is Also a Star	the sun is also a star | nicola yoon	2016	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.162031+00	2026-10-11 15:10:17.475497+00
-2434	3096 Days	3096 days | natascha kampusch	2010	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:06.475225+00	2026-10-11 15:10:17.475518+00
-2435	An Anonymous Girl	an anonymous girl | greer hendricks; sarah pekkanen	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.775817+00	2026-10-11 15:10:17.475533+00
-2436	Hollow City	hollow city | ransom riggs	2014	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:07.167363+00	2026-10-11 15:10:17.47555+00
-2437	Brain on Fire	brain on fire | susannah cahalan	2012	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:07.473024+00	2026-10-11 15:10:17.475569+00
-2438	The Three-Body Problem	the three-body problem | liu cixin	2006	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:07.568534+00	2026-10-11 15:10:17.47558+00
-2439	Fight Club	fight club | chuck palahniuk	1996	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:08.265656+00	2026-10-11 15:10:17.475609+00
-2441	The Last Time I Lied	the last time i lied | riley sager	2018	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:09.179602+00	2026-10-11 15:10:17.475652+00
-2442	The Chain	the chain | adrian mckinty	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:09.466665+00	2026-10-11 15:10:17.475667+00
-2443	Final Girls	final girls | riley sager	2017	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:09.960795+00	2026-10-11 15:10:17.475684+00
-2444	The Chosen	the chosen | j.r. ward	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.159708+00	2026-10-11 15:10:17.475696+00
-2445	The Thief	the thief | j.r. ward	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.17695+00	2026-10-11 15:10:17.475705+00
-2446	The Declaration	the declaration | gemma malley	2007	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:10.574166+00	2026-10-11 15:10:17.475725+00
-2447	Rapture	rapture | j.r. ward	2012	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.661722+00	2026-10-11 15:10:17.475733+00
-2448	Immortal	immortal | j.r. ward	2013	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.676945+00	2026-10-11 15:10:17.475743+00
-2449	Halloween Party	halloween party | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.855713+00	2026-10-11 15:10:17.475756+00
-2450	The Sleepwalker	the sleepwalker | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.869311+00	2026-10-11 15:10:17.475765+00
-2451	Bad Dreams	bad dreams | r. l. stine	1993	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.882123+00	2026-10-11 15:10:17.475774+00
-2452	Lights Out	lights out | r. l. stine	1991	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.962674+00	2026-10-11 15:10:17.475784+00
-2453	Bag of Bones	bag of bones | stephen king	1998	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.072689+00	2026-10-11 15:10:17.475797+00
-2454	Gone Girl	gone girl | gillian flynn	2012	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:11.08408+00	2026-10-11 15:10:17.475806+00
-2455	Into the Dark	into the dark | r. l. stine	1997	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.259803+00	2026-10-11 15:10:17.475818+00
-2456	Marked	marked | p. c. cast	2007	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.292749+00	2026-10-11 15:10:17.475829+00
-2457	Burned	burned | p. c. cast	2010	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.370591+00	2026-10-11 15:10:17.475838+00
-2458	Lolita	lolita | vladimir nabokov	1955	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.463391+00	2026-10-11 15:10:17.475848+00
-2459	Little Black Lies	little black lies | sharon bolton	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.568205+00	2026-10-11 15:10:17.47586+00
-2460	Sometimes I Lie	sometimes i lie | alice feeney	2017	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:11.975395+00	2026-10-11 15:10:17.475881+00
-2461	You	you | caroline kepnes	2014	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:12.274031+00	2026-10-11 15:10:17.475899+00
-2463	Honey	honey | imani thompson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.658431+00	2026-10-11 15:10:17.475923+00
-2464	The Wax Child	the wax child | olga ravn	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.672886+00	2026-10-11 15:10:17.475932+00
-2465	The Creeper	the creeper | a. m. shine	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.758871+00	2026-10-11 15:10:17.475941+00
-2467	Part of Your World	part of your world | abby jimenez	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.770592+00	2026-10-11 15:10:17.475956+00
-2470	The Ascent	the ascent | adam plantinga	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.798+00	2026-10-11 15:10:17.475982+00
-2471	The Compound	the compound | aisling rawle	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.806973+00	2026-10-11 15:10:17.475993+00
-2475	Truly, Madly, Deeply	truly, madly, deeply | alexandria bellefleur	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.842602+00	2026-10-11 15:10:17.476027+00
-2476	Battle of the Bookstores	battle of the bookstores | ali brady	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.849477+00	2026-10-11 15:10:17.476037+00
-2477	Bound	bound | ali hazelwood	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.860126+00	2026-10-11 15:10:17.476047+00
-2478	Hot for Slayer	hot for slayer | ali hazelwood	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.864778+00	2026-10-11 15:10:17.476055+00
-2481	Every Step She Takes	every step she takes | alison cochrun	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.883593+00	2026-10-11 15:10:17.476076+00
-2482	The Charm Offensive	the charm offensive | alison cochrun	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.890246+00	2026-10-11 15:10:17.476085+00
-2484	Shiver	shiver | allie reynolds	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.906311+00	2026-10-11 15:10:17.476104+00
-2486	One of Us Knows	one of us knows | alyssa cole	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.91757+00	2026-10-11 15:10:17.476119+00
-2487	You're Invited	you're invited | amanda jayatissa	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.926955+00	2026-10-11 15:10:17.476129+00
-2488	Any Man	any man | amber tamblyn	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.936343+00	2026-10-11 15:10:17.476141+00
-2489	Haven't Killed in Years	haven't killed in years | amy k. green	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.943446+00	2026-10-11 15:10:17.476151+00
-2493	With Stars in Her Eyes	with stars in her eyes | andie burke	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.966626+00	2026-10-11 15:10:17.476178+00
-2494	Fall for Him	fall for him | andie burke	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.973669+00	2026-10-11 15:10:17.476188+00
-2495	The Spare Room	the spare room | andrea bartz	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.980478+00	2026-10-11 15:10:17.476198+00
-2498	Just a Taste	just a taste | anise starre	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.005704+00	2026-10-11 15:10:17.476223+00
-2499	Crash Landing	crash landing | annie mcquaid	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.013034+00	2026-10-11 15:10:17.476232+00
-2500	Conform	conform | ariel sullivan	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.020432+00	2026-10-11 15:10:17.476243+00
-2502	This Book Will Bury Me	this book will bury me | ashley winstead	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.032841+00	2026-10-11 15:10:17.476258+00
-2505	Call the Coroner	call the coroner | avril ashton	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.059294+00	2026-10-11 15:10:17.478339+00
-2506	I, Medusa	i, medusa | ayana gray	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.067212+00	2026-10-11 15:10:17.478354+00
-2513	Swept Away	swept away | beth o'leary	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.157373+00	2026-10-11 15:10:17.478404+00
-2517	The Irresistible Urge to Fall for Your Enemy	the irresistible urge to fall for your enemy | brigitte knightley	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.192675+00	2026-10-11 15:10:17.478438+00
-2528	Bad Tourists	bad tourists | caro carver	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.314096+00	2026-10-11 15:10:17.478518+00
-2532	Every Time I Go On Vacation, Someone Dies	every time i go on vacation, someone dies | catherine mack	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.344556+00	2026-10-11 15:10:17.478549+00
-2533	Run Time	run time | catherine ryan howard	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.354895+00	2026-10-11 15:10:17.478561+00
-2534	Burn After Reading	burn after reading | catherine ryan howard	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.361728+00	2026-10-11 15:10:17.47857+00
-2535	Look in the Mirror	look in the mirror | catherine steadman	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.366711+00	2026-10-11 15:10:17.478579+00
-2538	Wild Dark Shore	wild dark shore | charlotte mcconaghy	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.38921+00	2026-10-11 15:10:17.478603+00
-2541	The Hitchhikers	the hitchhikers | chevy stevens	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.411192+00	2026-10-11 15:10:17.478628+00
-2542	The Darkest Deep	the darkest deep | chris butera	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.418051+00	2026-10-11 15:10:17.478638+00
-2543	The Place Where They Buried Your Heart	the place where they buried your heart | christina henry	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.427432+00	2026-10-11 15:10:17.478649+00
-2546	Lucky Day	lucky day | chuck tingle	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.44666+00	2026-10-11 15:10:17.478669+00
-2547	The Romantic Agenda	the romantic agenda | claire kann	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.45596+00	2026-10-11 15:10:17.47868+00
-2548	The Marriage Narrative	the marriage narrative | claire kann	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.460508+00	2026-10-11 15:10:17.478689+00
-2555	The Sweetest Oblivion	the sweetest oblivion | danielle lori	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.507556+00	2026-10-11 15:10:17.478738+00
-2556	The Dead Husband Cookbook	the dead husband cookbook | danielle valentine	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.514165+00	2026-10-11 15:10:17.478748+00
-2557	Night Watcher	night watcher | daphne woolsoncroft	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.521029+00	2026-10-11 15:10:17.478759+00
-2558	Where He Can't Find You	where he can't find you | darcy coates	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.527862+00	2026-10-11 15:10:17.478768+00
-2559	Parasite	parasite | darcy coates	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.534363+00	2026-10-11 15:10:17.478778+00
-2560	How Bad Things Can Get	how bad things can get | darcy coates	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.539136+00	2026-10-11 15:10:17.478786+00
-2568	It Will Only Hurt For a Moment	it will only hurt for a moment | delilah s. dawson	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.588729+00	2026-10-11 15:10:17.478838+00
-2569	House of Idyll	house of idyll | delilah s. dawson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.593356+00	2026-10-11 15:10:17.478848+00
-2574	Wild Love	wild love | elsie silver	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.631053+00	2026-10-11 15:10:17.478889+00
-2578	This Girl's a Killer	this girl's a killer | emma c. wells	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.661566+00	2026-10-11 15:10:17.47892+00
-2587	Famous Last Words	famous last words | gillian mcallister	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.72215+00	2026-10-11 15:10:17.478985+00
-2590	BadAsstronauts	badasstronauts | grady hendrix	2012	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.739871+00	2026-10-11 15:10:17.479006+00
-2592	The Haunting of Velkwood	the haunting of velkwood | gwendolyn kiste	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.750729+00	2026-10-11 15:10:17.479021+00
-2593	Haunting Adeline	haunting adeline | h.d. carlton	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.757361+00	2026-10-11 15:10:17.479031+00
-2594	The Snowball Effect	the snowball effect | haley cass	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.76239+00	2026-10-11 15:10:17.479039+00
-2600	Leech	leech | hiron ennes	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.81406+00	2026-10-11 15:10:17.481358+00
-2603	Behind a Closed Door	behind a closed door | j.d. barker	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.840106+00	2026-10-11 15:10:17.481395+00
-2607	The Will of the Many	the will of the many | james islington	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.866392+00	2026-10-11 15:10:17.481428+00
-2609	What Kind of Paradise	what kind of paradise | janelle brown	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.877252+00	2026-10-11 15:10:17.481444+00
-2613	Haunted Ever After	haunted ever after | jen deluca	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.908554+00	2026-10-11 15:10:17.48148+00
-2626	Give Me Butterflies	give me butterflies | jillian meadows	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.015211+00	2026-10-11 15:10:17.481572+00
-2627	An Academic Affair	an academic affair | jodi mcalister	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.023099+00	2026-10-11 15:10:17.481583+00
-2629	The Stranger in Her House	the stranger in her house | john marrs	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.045523+00	2026-10-11 15:10:17.481599+00
-2630	The Family Experiment	the family experiment | john marrs	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.052663+00	2026-10-11 15:10:17.481609+00
-2631	The Marriage Act	the marriage act | john marrs	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.061089+00	2026-10-11 15:10:17.48162+00
-2634	Heads Will Roll	heads will roll | josh winning	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.081116+00	2026-10-11 15:10:17.481643+00
-2635	It's Different This Time	it's different this time | joss richard	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.08796+00	2026-10-11 15:10:17.481653+00
-2639	Running Wild	running wild | k. a. tucker	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.119088+00	2026-10-11 15:10:17.481686+00
-2640	Dead Space	dead space | kali wallace	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.12799+00	2026-10-11 15:10:17.481697+00
-2641	Penance	penance | kanae minato	2009	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.132836+00	2026-10-11 15:10:17.481706+00
-2643	Grave Matter	grave matter | karina halle	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.15088+00	2026-10-11 15:10:17.481725+00
-2645	In Good Company	in good company | kat singleton	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.166604+00	2026-10-11 15:10:17.481742+00
-2646	A Killing Cold	a killing cold | kate alice marshall	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.173326+00	2026-10-11 15:10:17.481752+00
-2655	Kin	kin | kealan patrick burke	2011	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.249028+00	2026-10-11 15:10:17.481826+00
-2657	All That We See or Seem	all that we see or seem | ken liu	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.263002+00	2026-10-11 15:10:17.481845+00
-2661	The Nature of Disappearing	the nature of disappearing | kimi cunningham grant	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.291049+00	2026-10-11 15:10:17.481876+00
-2662	Battle Royale	battle royale | koushun takami	1999	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.297879+00	2026-10-11 15:10:17.481886+00
-2664	How To Solve Your Own Murder	how to solve your own murder | kristen perrin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.311511+00	2026-10-11 15:10:17.481904+00
-2665	The Neighbor Favor	the neighbor favor | kristina forest	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.320463+00	2026-10-11 15:10:17.481916+00
-2666	The Partner Plot	the partner plot | kristina forest	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.325002+00	2026-10-11 15:10:17.481925+00
-2667	Because You're Mine	because you're mine | kristopher triana	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.329571+00	2026-10-11 15:10:17.481934+00
-2668	The Game Changer	the game changer | lana ferguson	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.334526+00	2026-10-11 15:10:17.481943+00
-2669	The Mating Game	the mating game | lana ferguson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.343365+00	2026-10-11 15:10:17.481954+00
-2670	When the Reckoning Comes	when the reckoning comes | latanya mcqueen	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.349584+00	2026-10-11 15:10:17.481964+00
-2672	One-Star Romance	one-star romance | laura hankin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.36456+00	2026-10-11 15:10:17.481982+00
-2673	The Day of the Door	the day of the door | laurel hightower	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.368854+00	2026-10-11 15:10:17.48199+00
-2674	The Last Room on the Left	the last room on the left | leah konen	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.377302+00	2026-10-11 15:10:17.482001+00
-2675	Guestbook	guestbook | leanne shapton	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.386026+00	2026-10-11 15:10:17.482013+00
-2676	One Yellow Eye	one yellow eye | leigh radford	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.392836+00	2026-10-11 15:10:17.482023+00
-2677	If You're Seeing This, It's Meant For You	if you're seeing this, it's meant for you | leigh stein	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.405825+00	2026-10-11 15:10:17.482036+00
-2678	Under the Same Stars	under the same stars | libba bray	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.412538+00	2026-10-11 15:10:17.482046+00
-2679	Three Swedish Mountain Men	three swedish mountain men | lily gold	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.422425+00	2026-10-11 15:10:17.482057+00
-2680	Vampires at Sea	vampires at sea | lindsay merbaum	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.4291+00	2026-10-11 15:10:17.482066+00
-2681	Christmas Fling	christmas fling | lindsey kelk	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.436191+00	2026-10-11 15:10:17.482076+00
-2682	Adrift	adrift | lisa brideau	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.442451+00	2026-10-11 15:10:17.483307+00
-2683	Watching You	watching you | lisa jewell	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.450824+00	2026-10-11 15:10:17.483325+00
-2684	Invisible Girl	invisible girl | lisa jewell	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.455757+00	2026-10-11 15:10:17.483335+00
-2685	First Light	first light | liz kerin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.460559+00	2026-10-11 15:10:17.483343+00
-2686	The God of the Woods	the god of the woods | liz moore	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.468011+00	2026-10-11 15:10:17.483354+00
-2687	Saving Noah	saving noah | lucinda berry	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.477467+00	2026-10-11 15:10:17.483365+00
-2688	The Surf House	the surf house | lucy clarke	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.484356+00	2026-10-11 15:10:17.483375+00
-2689	The Midnight Feast	the midnight feast | lucy foley	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.49067+00	2026-10-11 15:10:17.483386+00
-2690	Thirsty	thirsty | lucy lehane	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.497684+00	2026-10-11 15:10:17.483396+00
-2691	Story of My Life	story of my life | lucy score	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.504646+00	2026-10-11 15:10:17.483407+00
-2692	Love in Focus	love in focus | lyla lee	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.511407+00	2026-10-11 15:10:17.483417+00
-2693	A Very Merry Bromance	a very merry bromance | lyssa kay adams	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.517971+00	2026-10-11 15:10:17.483427+00
-2694	Glass Houses	glass houses | madeline ashby	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.526781+00	2026-10-11 15:10:17.483438+00
-2695	Breaking Point	breaking point | mads rafferty	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.533177+00	2026-10-11 15:10:17.483449+00
-2696	Dust Storm	dust storm | maggie c. gates	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.539646+00	2026-10-11 15:10:17.483459+00
-2697	The Ripple Effect	the ripple effect | maggie north	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.546769+00	2026-10-11 15:10:17.483468+00
-2698	Blob	blob | maggie su	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.553687+00	2026-10-11 15:10:17.483478+00
-2699	The Summer I Ate the Rich	the summer i ate the rich | maika moulite; maritza moulite	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.565034+00	2026-10-11 15:10:17.48349+00
-2701	Red City	red city | marie lu	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.576195+00	2026-10-11 15:10:17.483505+00
-2704	The World Gives Way	the world gives way | marissa levien	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.6015+00	2026-10-11 15:10:17.483531+00
-2708	William	william | mason coile	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.6299+00	2026-10-11 15:10:17.48356+00
-2709	The Build-a-Boyfriend Project	the build-a-boyfriend project | mason deaver	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.636852+00	2026-10-11 15:10:17.48357+00
-2712	Grace & Henry's Holiday Movie Marathon	grace & henry's holiday movie marathon | matthew norman	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.666229+00	2026-10-11 15:10:17.483596+00
-2715	Well, Actually	well, actually | mazey eddings	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.683992+00	2026-10-11 15:10:17.483621+00
-2716	The Mad Wife	the mad wife | meagan church	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.69135+00	2026-10-11 15:10:17.483632+00
-2725	Mary	mary | nat cassidy	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.763774+00	2026-10-11 15:10:17.483713+00
-2730	The Poppy Fields	the poppy fields | nikki erlick	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.802428+00	2026-10-11 15:10:17.483759+00
-2731	The Measure	the measure | nikki erlick	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.809129+00	2026-10-11 15:10:17.48377+00
-2732	Such Quiet Girls	such quiet girls | noelle w. ihli	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.81616+00	2026-10-11 15:10:17.483781+00
-2736	Sea of Ruin	sea of ruin | pam godwin	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.846918+00	2026-10-11 15:10:17.483849+00
-2740	25 Days	25 days | per jacobsen	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.875156+00	2026-10-11 15:10:17.483886+00
-2741	Unsteady	unsteady | peyton corinne	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.881637+00	2026-10-11 15:10:17.483898+00
-2742	The Autumn Springs Retirement Home Massacre	the autumn springs retirement home massacre | philip fracassi	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.890907+00	2026-10-11 15:10:17.483909+00
-2746	Fallen Gods	fallen gods | rachel van dyken	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.960496+00	2026-10-11 15:10:17.483958+00
-2747	How I'll Kill You	how i'll kill you | ren destefano	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.967462+00	2026-10-11 15:10:17.483969+00
-2748	The Impossible Fortune	the impossible fortune | richard osman	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.974999+00	2026-10-11 15:10:17.48398+00
-2749	The Romance Recipe	the romance recipe | ruby barrett	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.990907+00	2026-10-11 15:10:17.483996+00
-2754	Cold Eternity	cold eternity | s. a. barnes	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.020841+00	2026-10-11 15:10:17.484035+00
-2755	Ghost Station	ghost station | s. a. barnes	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.027777+00	2026-10-11 15:10:17.484047+00
-2757	Darling Girls	darling girls | sally hepworth	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.039605+00	2026-10-11 15:10:17.484064+00
-2758	The Good Sister	the good sister | sally hepworth	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.046494+00	2026-10-11 15:10:17.484075+00
-2759	Mad Mabel	mad mabel | sally hepworth	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.050804+00	2026-10-11 15:10:17.484085+00
-2764	The Island	the island | sarah goodwin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.086315+00	2026-10-11 15:10:17.484128+00
-2765	Twice Shy	twice shy | sarah hogle	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.092985+00	2026-10-11 15:10:17.48414+00
-2770	Serial Killer Support Group	serial killer support group | saratoga schaefer	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.118453+00	2026-10-11 15:10:17.484176+00
-2771	Blood Sugar	blood sugar | sascha rothchild	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.127347+00	2026-10-11 15:10:17.484188+00
-2779	The Hitchcock Hotel	the hitchcock hotel | stephanie wrobel	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.189175+00	2026-10-11 15:10:17.484254+00
-2781	The Venue	the venue | t.j. payne	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.208928+00	2026-10-11 15:10:17.484298+00
-2782	Intercepts	intercepts | t.j. payne	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.218427+00	2026-10-11 15:10:17.48431+00
-2784	An Evil Premise	an evil premise | t. marie vandelly	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.234108+00	2026-10-11 15:10:17.484329+00
-2795	Any Trope But You	any trope but you | victoria lavine	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.342473+00	2026-10-11 15:10:17.484421+00
-2799	The Deep Sky	the deep sky | yume kitasei	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.373499+00	2026-10-11 15:10:17.484454+00
-2800	Saltcrop	saltcrop | yume kitasei	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.38076+00	2026-10-11 15:10:17.484465+00
-2801	Two Can Play	two can play | ali hazelwood	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.394768+00	2026-10-11 15:10:17.484478+00
-2802	Playing for Keeps	playing for keeps | alexandria bellefleur	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.402308+00	2026-10-11 15:10:17.484487+00
-2803	The Ritual	the ritual | shantel tessier	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.41472+00	2026-10-11 15:10:17.484505+00
-2804	I Want You More	i want you more | swan huntley	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.426665+00	2026-10-11 15:10:17.484517+00
-2805	Dolls & Daggers	dolls & daggers | d.l. darby	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.435498+00	2026-10-11 15:10:17.484528+00
-2806	Shy Girl	shy girl | mia ballard	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.444091+00	2026-10-11 15:10:17.484539+00
-2807	Broken Bonds	broken bonds | j. bree	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.456557+00	2026-10-11 15:10:17.48455+00
-2808	The Raven Scholar	the raven scholar | antonia hodgson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.467336+00	2026-10-11 15:10:17.484562+00
-2810	To Cage a Wild Bird	to cage a wild bird | brooke fast	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.481596+00	2026-10-11 15:10:17.484579+00
-2812	The Serpent and the Wings of Night	the serpent and the wings of night | carissa broadbent	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.496387+00	2026-10-11 15:10:17.484612+00
-2813	A Killer Kind of Romance	a killer kind of romance | letizia lorini	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.50336+00	2026-10-11 15:10:17.484625+00
-2814	Detour	detour | jeff rake; rob hart	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.514997+00	2026-10-11 15:10:17.484637+00
-2815	The Alpine Retreat	the alpine retreat | sarah goodwin	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.519593+00	2026-10-11 15:10:17.484647+00
-2821	Meet the Newmans	meet the newmans | jennifer niven	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.558875+00	2026-10-11 15:10:17.48469+00
-2823	A Box Full of Darkness	a box full of darkness | simone st. james	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.568661+00	2026-10-11 15:10:17.484706+00
-2824	Just Watch Me	just watch me | lior torenberg	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.575937+00	2026-10-11 15:10:17.484717+00
-2825	Dead in the Water	dead in the water | john marrs	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.580731+00	2026-10-11 15:10:17.484727+00
-2826	The Future Saints	the future saints | ashley winstead	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.585401+00	2026-10-11 15:10:17.484737+00
-2828	It's Not Her	it's not her | mary kubica	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.597089+00	2026-10-11 15:10:17.484755+00
-2829	Greedy	greedy | callie kazumi	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.604048+00	2026-10-11 15:10:17.484766+00
-2830	How to Kill a Guy in Ten Dates	how to kill a guy in ten dates | shailee thompson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.610956+00	2026-10-11 15:10:17.484777+00
-2831	How to Steal a Galaxy	how to steal a galaxy | beth revis	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.615833+00	2026-10-11 15:10:17.484788+00
-2832	Last Chance to Save the World	last chance to save the world | beth revis	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.62041+00	2026-10-11 15:10:17.484797+00
-2834	Operation Bounce House	operation bounce house | matt dinniman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.632994+00	2026-10-11 15:10:17.484814+00
-2836	For Human Use	for human use | sarah g. pierce	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.663654+00	2026-10-11 15:10:17.484832+00
-2838	Game, Set, Match	game, set, match | jennifer iacopelli	2013	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.675829+00	2026-10-11 15:10:17.484848+00
-2840	When I Kill You	when i kill you | b. a. paris	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.690028+00	2026-10-11 15:10:17.484867+00
-2841	Crown of War and Shadow	crown of war and shadow | j.r. ward	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.69483+00	2026-10-11 15:10:17.484877+00
-2846	Valentine's Slay	valentine's slay | navessa allen	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.722666+00	2026-10-11 15:10:17.484943+00
-2849	The Girls Before	the girls before | kate alice marshall	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.73911+00	2026-10-11 15:10:17.484967+00
-2850	Married to a Pirate	married to a pirate | athena rose	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.765979+00	2026-10-11 15:10:17.484978+00
-2851	Evil Genius	evil genius | claire oshetsky	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.773424+00	2026-10-11 15:10:17.484988+00
-2852	After the Fall	after the fall | edward ashton	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.777906+00	2026-10-11 15:10:17.484998+00
-2853	Strange Buildings	strange buildings | uketsu	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.783424+00	2026-10-11 15:10:17.485007+00
-2855	No Matter What	no matter what | cara bastone	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.804231+00	2026-10-11 15:10:17.485025+00
-2857	In Her Own League	in her own league | liz tomforde	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.81791+00	2026-10-11 15:10:17.485044+00
-2858	The Book Tour	the book tour | emily ohanjanians	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.825894+00	2026-10-11 15:10:17.485054+00
-2861	Toe to Toe	toe to toe | falon ballard	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.850921+00	2026-10-11 15:10:17.485078+00
-2862	This Story Might Save Your Life	this story might save your life | tiffany crum	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.867253+00	2026-10-11 15:10:17.485089+00
-2863	The Starter Ex	the starter ex | mia sosa	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.878212+00	2026-10-11 15:10:17.485101+00
-2864	The Truth About Ruby Cooper	the truth about ruby cooper | liz nugent	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.883689+00	2026-10-11 15:10:17.48511+00
-2866	Blood & Roses Volume 1	blood & roses volume 1 | callie hart	2014	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.894114+00	2026-10-11 15:10:17.485126+00
-2875	A Tongue So Sweet and Deadly	a tongue so sweet and deadly | sophia st. germain	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.957877+00	2026-10-11 15:10:17.485192+00
-2879	Nothing Tastes As Good	nothing tastes as good | luke dumas	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.979279+00	2026-10-11 15:10:17.485222+00
-2883	Love Is An Algorithm	love is an algorithm | laura brooke robson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.007544+00	2026-10-11 15:10:17.485256+00
-2887	Bodies of Work	bodies of work | clay mcleod chapman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.039449+00	2026-10-11 15:10:17.48531+00
-2888	Happy Ending	happy ending | chloe liese	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.043734+00	2026-10-11 15:10:17.48532+00
-2890	Cherry Baby	cherry baby | rainbow rowell	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.057221+00	2026-10-11 15:10:17.485338+00
-2892	Japanese Gothic	japanese gothic | kylie lee baker	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.068426+00	2026-10-11 15:10:17.485357+00
-2894	The Dinner Party	the dinner party | freida mcfadden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.081872+00	2026-10-11 15:10:17.485377+00
-2896	Her First Lie	her first lie | lucinda berry	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.093135+00	2026-10-11 15:10:17.485394+00
-2898	The Many	the many | sylvain neuvel	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.104359+00	2026-10-11 15:10:17.485411+00
-2900	Love Galaxy	love galaxy | sierra branham	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.118059+00	2026-10-11 15:10:17.485429+00
-2901	Molka	molka | monika kim	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.122957+00	2026-10-11 15:10:17.485439+00
-2902	Blood Bound	blood bound | ellis hunter	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.129747+00	2026-10-11 15:10:17.485449+00
-2904	The Library After Dark	the library after dark | ande pliego	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.146789+00	2026-10-11 15:10:17.485471+00
-2905	Death's Daughter	death's daughter | s. a. barnes	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.152185+00	2026-10-11 15:10:17.485482+00
-2907	Rules for the Summer	rules for the summer | meghan quinn	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.165321+00	2026-10-11 15:10:17.4855+00
-2908	Cactus Heart	cactus heart | clio evans	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.171979+00	2026-10-11 15:10:17.485512+00
-2913	Fever Dream	fever dream | elsie silver	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.203133+00	2026-10-11 15:10:17.485554+00
-2914	Maneater	maneater | ellie graves	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.209589+00	2026-10-11 15:10:17.485567+00
-2915	The Last Book Club	the last book club | joanne rock	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.219455+00	2026-10-11 15:10:17.48558+00
-2916	Dead Weight	dead weight | hildur knutsdottir	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.224872+00	2026-10-11 15:10:17.485591+00
-2918	The Boyfriend Goal	the boyfriend goal | lauren blakely	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.238623+00	2026-10-11 15:10:17.48561+00
-2924	A Fortune of Sand	a fortune of sand | ruta sepetys	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.266228+00	2026-10-11 15:10:17.48565+00
-2932	Crown Me Dead	crown me dead | liv zander	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.309792+00	2026-10-11 15:10:17.485709+00
-2935	Prince of Hate	prince of hate | michelle thate	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.328025+00	2026-10-11 15:10:17.485736+00
-2938	Sublimation	sublimation | isabel j. kim	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.353663+00	2026-10-11 15:10:17.485763+00
-2939	Backstabbers	backstabbers | eliza jabore	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.360449+00	2026-10-11 15:10:17.485775+00
-2940	Man of My Dreams	man of my dreams | olivia worley	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.36721+00	2026-10-11 15:10:17.485786+00
-2941	Not Good Neighbors	not good neighbors | violet lumani	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.375992+00	2026-10-11 15:10:17.485799+00
-2944	You First	you first | caroline kepnes	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.393898+00	2026-10-11 15:10:17.485824+00
-2945	A Broken Promise	a broken promise | tetyana walker	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.403007+00	2026-10-11 15:10:17.485837+00
-2946	A Simple Truth	a simple truth | tetyana walker	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.407434+00	2026-10-11 15:10:17.485847+00
-2947	A Rising Hope	a rising hope | tetyana walker	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.41208+00	2026-10-11 15:10:17.485857+00
-2948	A Deal With the Reaper	a deal with the reaper | madison lawson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.418783+00	2026-10-11 15:10:17.485868+00
-2949	A Sanctuary for Sin	a sanctuary for sin | madison lawson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.423516+00	2026-10-11 15:10:17.485879+00
-2950	The Summer Girlfriend	the summer girlfriend | kristina forest	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.428684+00	2026-10-11 15:10:17.485888+00
-2951	This Kingdom Will Not Kill Me	this kingdom will not kill me | illona andrews	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.435726+00	2026-10-11 15:10:17.485899+00
-2952	The Last Contract of Isako	the last contract of isako | fonda lee	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.442679+00	2026-10-11 15:10:17.485911+00
-2953	North Country	north country | k. a. tucker	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.447314+00	2026-10-11 15:10:17.48592+00
-2954	The Great Outdoors	the great outdoors | kayla olson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.451766+00	2026-10-11 15:10:17.48593+00
-2955	Dhampira	dhampira | amy pennza	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.4585+00	2026-10-11 15:10:17.485941+00
-2956	Slasher Summer	slasher summer | e.l. chen	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.465165+00	2026-10-11 15:10:17.485953+00
-2957	Nine Lives	nine lives | catherine steadman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.469742+00	2026-10-11 15:10:17.485962+00
-2958	Chase Me If You Can	chase me if you can | heather frances	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.476907+00	2026-10-11 15:10:17.485973+00
-2959	It Could Have Been Her	it could have been her | lisa jewell	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.481519+00	2026-10-11 15:10:17.485983+00
-2960	Crash	crash | kathy lockheart	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.488376+00	2026-10-11 15:10:17.485994+00
-2961	Dead But Dreaming of Electric Sheep	dead but dreaming of electric sheep | paul tremblay	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.493301+00	2026-10-11 15:10:17.486004+00
-2962	By Blade, I Protect	by blade, i protect | penelope sky	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.499937+00	2026-10-11 15:10:17.486015+00
-2963	Ink Bleed	ink bleed | trinity lynn	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.506972+00	2026-10-11 15:10:17.486026+00
-2964	Helpless	helpless | jessica knoll	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.511825+00	2026-10-11 15:10:17.486036+00
-2965	Fabulous Bodies	fabulous bodies | chuck tingle	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.516788+00	2026-10-11 15:10:17.486046+00
-2966	Ungodly Rich	ungodly rich | katharine mcgee	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.523977+00	2026-10-11 15:10:17.486056+00
-2967	The Season of Sinking	the season of sinking | daphne woolsoncroft	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.528833+00	2026-10-11 15:10:17.486066+00
-2969	Web of Vows and Vengeance	web of vows and vengeance | aria ashbrook	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.542992+00	2026-10-11 15:10:17.486084+00
-2970	Given	given | elayna r. gallea	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.550416+00	2026-10-11 15:10:17.486094+00
-2971	Hunted	hunted | elayna r. gallea	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.555068+00	2026-10-11 15:10:17.486104+00
-2972	Die For Me	die for me | shirlene obuobi	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.562182+00	2026-10-11 15:10:17.486115+00
-2973	Cross My Heart, I Hope You Die	cross my heart, i hope you die | mallory arnold	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.566796+00	2026-10-11 15:10:17.486125+00
-2974	In Stormy Weather	in stormy weather | chelsea curto	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.573841+00	2026-10-11 15:10:17.486137+00
-2975	The Last to Drown	the last to drown | noelle w. ihli	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.583142+00	2026-10-11 15:10:17.48615+00
-2976	Yes, Chef	yes, chef | grace reilly	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.589748+00	2026-10-11 15:10:17.486161+00
-2977	In Your Court	in your court | kit haley	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.597025+00	2026-10-11 15:10:17.486173+00
-2978	Buyer Beware	buyer beware | catherine ryan howard	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.601668+00	2026-10-11 15:10:17.486183+00
-2979	Plant Lady	plant lady | minyoung kang	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.610621+00	2026-10-11 15:10:17.486195+00
-2980	Pink Ink	pink ink | avina st. graves	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.615595+00	2026-10-11 15:10:17.486205+00
-2981	Lost and Found	lost and found | tarah dewitt	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.620255+00	2026-10-11 15:10:17.486214+00
-2983	Let's Kiss and Tell	let's kiss and tell | joss richard	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.633994+00	2026-10-11 15:10:17.486235+00
-2984	The Matchmaker's Cottage	the matchmaker's cottage | kat sloane	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.640798+00	2026-10-11 15:10:17.486247+00
-2985	Devil Inside	devil inside | clay mcleod chapman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.645224+00	2026-10-11 15:10:17.486257+00
-2988	If Books Could Kill	if books could kill | kate eberle	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.663819+00	2026-10-11 15:10:17.486304+00
-2989	The Death Row Club	the death row club | v. a. vazquez	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.670392+00	2026-10-11 15:10:17.486317+00
-2990	Starside	starside | alex aster	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.675661+00	2026-10-11 15:10:17.486328+00
-2991	The Secret Dinner	the secret dinner | raphael montes	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.684125+00	2026-10-11 15:10:17.486341+00
-2992	Scion	scion | james islington	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.688592+00	2026-10-11 15:10:17.48635+00
-2994	Hunting Adeline	hunting adeline | h. g. carlton	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.715505+00	2026-10-11 15:10:17.48638+00
-2995	Blood & Steel	blood & steel | helen scheuerer	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.722337+00	2026-10-11 15:10:17.486392+00
-2996	Whidbey	whidbey | t kira madden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.751596+00	2026-10-11 15:10:17.486424+00
-2997	Him	him | elle kennedy; sarina bowen	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.800126+00	2026-10-11 15:10:17.486454+00
-2998	Bad Boy Era	bad boy era | amy daws	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.818127+00	2026-10-11 15:10:17.486465+00
-2999	Beneath	beneath | ariel sullivan	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.863495+00	2026-10-11 15:10:17.486505+00
-3001	King of Gluttony	king of gluttony | ana huang	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.914532+00	2026-10-11 15:10:17.486555+00
-3002	King of Envy	king of envy | ana huang	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.924093+00	2026-10-11 15:10:17.486567+00
-3003	King of Sloth	king of sloth | ana huang	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.928827+00	2026-10-11 15:10:17.486577+00
-3004	The One Day You Were My Husband	the one day you were my husband | rosie walsh	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.942123+00	2026-10-11 15:10:17.486591+00
-3005	My Blade, Your Back	my blade, your back | k.m. moronova	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.952179+00	2026-10-11 15:10:17.486605+00
-3006	The Reality Of It All	the reality of it all | allison speka	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.964169+00	2026-10-11 15:10:17.486621+00
-3007	The House That Eats the Dead	the house that eats the dead | max doty	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.984397+00	2026-10-11 15:10:17.486643+00
-3008	One of the Family	one of the family | mark edwards	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.994009+00	2026-10-11 15:10:17.486656+00
-3009	Heart of Glass	heart of glass | jennifer hillier	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.001029+00	2026-10-11 15:10:17.486668+00
-3010	They Say a Girl Died Here	they say a girl died here | sarah pinborough	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.005852+00	2026-10-11 15:10:17.486678+00
-3013	Love Felt Like This	love felt like this | julie olivia	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.031905+00	2026-10-11 15:10:17.48671+00
-3014	Doomsdate	doomsdate | laura piper lee	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.039132+00	2026-10-11 15:10:17.486722+00
-3017	Love Antidote	love antidote | brynne weaver	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.161005+00	2026-10-11 15:10:17.486774+00
-3018	Solace House	solace house | will maclean	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.172462+00	2026-10-11 15:10:17.486789+00
-3019	Threshing Day	threshing day | rebecca yarros	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.179174+00	2026-10-11 15:10:17.486802+00
-3020	Newbourne Park	newbourne park | jennifer thorne	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.184821+00	2026-10-11 15:10:17.486812+00
-3021	XO Karma	xo karma | hailey dickert	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.19159+00	2026-10-11 15:10:17.486824+00
-3022	The Code of You	the code of you | sabrina hoffmann	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.198336+00	2026-10-11 15:10:17.486836+00
-3023	Bad Words	bad words | rioghnach robinson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.204824+00	2026-10-11 15:10:17.486847+00
-3024	The Witch	the witch | freida mcfadden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.209134+00	2026-10-11 15:10:17.486857+00
-3025	Driven	driven | mason coile	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.213763+00	2026-10-11 15:10:17.486866+00
-3026	Dive Bar at the End of the Road	dive bar at the end of the road | kelley armstrong	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.228717+00	2026-10-11 15:10:17.486882+00
+COPY public.book (id, title, book_key, year_published, pages, type, audience, language_written, cover_color, serial, poc, lgbtqia, read_before_tracking, created_at, updated_at, not_out_yet) FROM stdin;
+772	The Wives	the wives | tarryn fisher	2019	336	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:27.650875+00	2026-10-10 09:49:27.650875+00	f
+773	No Exit	no exit | taylor adams	2018	283	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:27.697632+00	2026-10-10 09:49:27.697632+00	f
+774	Regretting You	regretting you | colleen hoover	2019	365	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:27.756026+00	2026-10-10 09:49:27.756026+00	f
+775	Illuminae	illuminae | amie kaufman; jay kristoff	2015	599	Novel	Young adult	English	Orange	Series	f	f	f	2026-10-10 09:49:27.787042+00	2026-10-10 09:49:27.787042+00	f
+776	Into the Drowning Deep	into the drowning deep | mira grant	2017	440	Novel	Adult	English	Red	Series	f	t	f	2026-10-10 09:49:27.813883+00	2026-10-10 09:49:27.813883+00	f
+777	Holding Up the Universe	holding up the universe | jennifer niven	2016	271	Novel	Young adult	English	White	Standalone	f	f	f	2026-10-10 09:49:27.872091+00	2026-10-10 09:49:27.872091+00	f
+778	Throne of Glass	throne of glass | sarah j. maas	2013	430	Novel	Young adult	English	Purple	Series	f	f	f	2026-10-10 09:49:27.902849+00	2026-10-10 09:49:27.902849+00	f
+779	Imaginary Friend	imaginary friend | stephen chbosky	2019	706	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:27.969903+00	2026-10-10 09:49:27.969903+00	f
+780	The Simple Wild	the simple wild | k. a. tucker	2018	390	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:27.993016+00	2026-10-10 09:49:27.993016+00	f
+781	The Other People	the other people | c. j. tudor	2020	400	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:28.054243+00	2026-10-10 09:49:28.054243+00	f
+782	When We Were Vikings	when we were vikings | andrew david macdonald	2020	336	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:28.086458+00	2026-10-10 09:49:28.086458+00	f
+783	An Ember in the Ashes	an ember in the ashes | sabaa tahir	2016	311	Novel	Young adult	English	Yellow	Series	t	f	f	2026-10-10 09:49:28.151846+00	2026-10-10 09:49:28.151846+00	f
+784	One of Us Is Next	one of us is next | karen m. mcmanus	2020	377	Novel	Young adult	English	Red	Series	f	f	f	2026-10-10 09:49:28.180683+00	2026-10-10 09:49:28.180683+00	f
+785	Dead to Her	dead to her | sarah pinborough	2020	400	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:28.20677+00	2026-10-10 09:49:28.20677+00	f
+786	The Song of the Fireflies	the song of the fireflies | j. a. redmerski	2014	319	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:28.27053+00	2026-10-10 09:49:28.27053+00	f
+787	The Raven Boys	the raven boys | maggie stiefvater	2012	419	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:28.302284+00	2026-10-10 09:49:28.302284+00	f
+788	Such a Fun Age	such a fun age | kiley reid	2020	320	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:28.358445+00	2026-10-10 09:49:28.358445+00	f
+789	Perfect Little Children	perfect little children | sophie hannah	2020	329	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:28.38078+00	2026-10-10 09:49:28.38078+00	f
+790	The Dream Thieves	the dream thieves | maggie stiefvater	2013	450	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:28.392053+00	2026-10-10 09:49:28.392053+00	f
+791	Eight Perfect Murders	eight perfect murders | peter swanson	2020	288	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:28.465755+00	2026-10-10 09:49:28.465755+00	f
+792	Baby Teeth	baby teeth | zoje stage	2018	304	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:28.488345+00	2026-10-10 09:49:28.488345+00	f
+793	The Dark Dark	the dark dark | samantha hunt	2017	241	Short stories	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:28.514584+00	2026-10-10 09:49:28.514584+00	f
+794	Split Tooth	split tooth | tanya tagaq	2018	202	Verse	Adult	English	White	Standalone	t	f	f	2026-10-10 09:49:28.572038+00	2026-10-10 09:49:28.572038+00	f
+795	Pet Sematary	pet sematary | stephen king	1983	465	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:28.600511+00	2026-10-10 09:49:28.600511+00	f
+796	What If It's Us	what if it's us | adam silvera; becky albertalli	2018	433	Novel	Young adult	English	Blue	Standalone	t	t	f	2026-10-10 09:49:28.680266+00	2026-10-10 09:49:28.680266+00	f
+797	Vicious	vicious | v. e. schwab	2013	340	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:28.756844+00	2026-10-10 09:49:28.756844+00	f
+798	Pretty as a Picture	pretty as a picture | elizabeth little	2020	352	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:28.781834+00	2026-10-10 09:49:28.781834+00	f
+799	The Little Prince	the little prince | antoine de saint exupery	1943	91	Novel	Children	French	Blue	Standalone	f	f	f	2026-10-10 09:49:28.855183+00	2026-10-10 09:49:28.855183+00	f
+800	If We Were Villains	if we were villains | m. l. rio	2017	368	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:28.952982+00	2026-10-10 09:49:28.952982+00	f
+801	Wild Beauty	wild beauty | anna-marie mclemore	2017	313	Novel	Young adult	English	Multicolor	Standalone	t	t	f	2026-10-10 09:49:28.976763+00	2026-10-10 09:49:28.976763+00	f
+802	The Song of Achilles	the song of achilles | madeline miller	2011	322	Novel	Adult	English	Yellow	Standalone	f	t	f	2026-10-10 09:49:28.998976+00	2026-10-10 09:49:28.998976+00	f
+803	An Enchantment of Ravens	an enchantment of ravens | margaret rogerson	2017	303	Novel	Young adult	English	Multicolor	Standalone	f	f	f	2026-10-10 09:49:29.069308+00	2026-10-10 09:49:29.069308+00	f
+804	You Are Not Alone	you are not alone | greer hendricks; sarah pekkanen	2020	343	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:29.150488+00	2026-10-10 09:49:29.150488+00	f
+805	This Train is Being Held	this train is being held | ismee amiel williams	2020	336	Novel	Young adult	English	Pink	Standalone	t	f	f	2026-10-10 09:49:29.178261+00	2026-10-10 09:49:29.178261+00	f
+806	Rolling in the Deep	rolling in the deep | mira grant	2015	123	Novel	Adult	English	Teal	Series	f	t	f	2026-10-10 09:49:29.185839+00	2026-10-10 09:49:29.185839+00	f
+807	King and the Dragonflies	king and the dragonflies | kacen callender	2020	272	Novel	Middle-grade	English	Green	Standalone	t	t	f	2026-10-10 09:49:29.250515+00	2026-10-10 09:49:29.250515+00	f
+808	Upright Women Wanted	upright women wanted | sarah gailey	2020	176	Novel	Adult	English	Teal	Standalone	f	t	f	2026-10-10 09:49:29.277801+00	2026-10-10 09:49:29.277801+00	f
+809	Vengeful	vengeful | v. e. schwab	2018	462	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:29.285978+00	2026-10-10 09:49:29.285978+00	f
+810	The Woman in the Window	the woman in the window | a. j. finn	2018	434	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:29.356809+00	2026-10-10 09:49:29.356809+00	f
+811	The Poet X	the poet x | elizabeth acevedo	2018	368	Verse	Young adult	English	White	Standalone	t	f	f	2026-10-10 09:49:29.387567+00	2026-10-10 09:49:29.387567+00	f
+812	The Wife Between Us	the wife between us | greer hendricks; sarah pekkanen	2018	351	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:29.452783+00	2026-10-10 09:49:29.452783+00	f
+813	The Guest List	the guest list | lucy foley	2020	320	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:29.48767+00	2026-10-10 09:49:29.48767+00	f
+814	Dear Martin	dear martin | nic stone	2017	196	Novel	Young adult	English	White	Standalone	t	f	f	2026-10-10 09:49:29.553981+00	2026-10-10 09:49:29.553981+00	f
+815	Be Not Far From Me	be not far from me | mindy mcginnis	2020	240	Novel	Young adult	English	White	Standalone	f	f	f	2026-10-10 09:49:29.577735+00	2026-10-10 09:49:29.577735+00	f
+816	The Kind Worth Killing	the kind worth killing | peter swanson	2015	303	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:29.584517+00	2026-10-10 09:49:29.584517+00	f
+817	SLAY	slay | brittney morris	2019	323	Novel	Young adult	English	White	Standalone	t	f	f	2026-10-10 09:49:29.674024+00	2026-10-10 09:49:29.674024+00	f
+818	The Deep	the deep | rivers solomon	2019	166	Novel	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:49:29.695573+00	2026-10-10 09:49:29.695573+00	f
+819	All Boys Aren't Blue	all boys aren't blue | george m. johnson	2020	304	Memoir	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:49:29.754401+00	2026-10-10 09:49:29.754401+00	f
+820	The Black Flamingo	the black flamingo | dean atta	2019	360	Verse	Young adult	English	Black	Standalone	t	t	f	2026-10-10 09:49:29.777357+00	2026-10-10 09:49:29.777357+00	f
+821	You Should See Me In a Crown	you should see me in a crown | leah johnson	2020	328	Novel	Young adult	English	Purple	Standalone	t	t	f	2026-10-10 09:49:29.798778+00	2026-10-10 09:49:29.798778+00	f
+822	Behind Closed Doors	behind closed doors | b. a. paris	2016	263	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:29.869872+00	2026-10-10 09:49:29.869872+00	f
+823	Beach Read	beach read | emily henry	2020	361	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:29.896428+00	2026-10-10 09:49:29.896428+00	f
+824	They Both Die at the End	they both die at the end | adam silvera	2017	368	Novel	Young adult	English	Purple	Standalone	t	t	f	2026-10-10 09:49:29.904099+00	2026-10-10 09:49:29.904099+00	f
+825	The Unhoneymooners	the unhoneymooners | christina lauren	2019	400	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:29.976259+00	2026-10-10 09:49:29.976259+00	f
+826	The Henna Wars	the henna wars | adiba jaigirdar	2020	400	Novel	Young adult	English	Pink	Standalone	t	t	f	2026-10-10 09:49:29.9991+00	2026-10-10 09:49:29.9991+00	f
+827	The Cry	the cry | helen fitzgerald	2012	257	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.066125+00	2026-10-10 09:49:30.066125+00	f
+828	The Southern Book Club's Guide to Slaying Vampires	the southern book club's guide to slaying vampires | grady hendrix	2020	400	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:30.163808+00	2026-10-10 09:49:30.163808+00	f
+829	In a Dark, Dark Wood	in a dark, dark wood | ruth ware	2015	325	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.187044+00	2026-10-10 09:49:30.187044+00	f
+830	Home Before Dark	home before dark | riley sager	2020	384	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:30.272943+00	2026-10-10 09:49:30.272943+00	f
+831	Last to Die	last to die | tess gerritsen	2012	346	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:49:30.357937+00	2026-10-10 09:49:30.357937+00	f
+832	As Long As We Both Shall Live	as long as we both shall live | joann chaney	2018	359	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:30.380684+00	2026-10-10 09:49:30.380684+00	f
+833	Every Heart a Doorway	every heart a doorway | seanan mcguire	2016	173	Novel	Young adult	English	Brown	Series	t	t	f	2026-10-10 09:49:30.474175+00	2026-10-10 09:49:30.474175+00	f
+834	The Last Flight	the last flight | julie clark	2020	288	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:30.495582+00	2026-10-10 09:49:30.495582+00	f
+835	Carrie	carrie | stephen king	1974	242	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:30.55407+00	2026-10-10 09:49:30.55407+00	f
+836	Mexican Gothic	mexican gothic | silvia moreno-garcia	2020	320	Novel	Adult	English	Green	Standalone	t	f	f	2026-10-10 09:49:30.583055+00	2026-10-10 09:49:30.583055+00	f
+837	Twilight	twilight | stephenie meyer	2005	404	Novel	Young adult	English	Black	Series	f	f	f	2026-10-10 09:49:30.653669+00	2026-10-10 09:49:30.653669+00	f
+838	Clap When You Land	clap when you land | elizabeth acevedo	2020	417	Verse	Young adult	English	Multicolor	Standalone	t	f	f	2026-10-10 09:49:30.661669+00	2026-10-10 09:49:30.661669+00	f
+839	Good Me, Bad Me	good me, bad me | ali land	2017	320	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:30.690799+00	2026-10-10 09:49:30.690799+00	f
+840	Loveboat, Taipei	loveboat, taipei | abigail hing wen	2020	432	Novel	Young adult	English	Black	Series	t	f	f	2026-10-10 09:49:30.767804+00	2026-10-10 09:49:30.767804+00	f
+841	One to Watch	one to watch | kate stayman-london	2020	432	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.789257+00	2026-10-10 09:49:30.789257+00	f
+842	Bring Me Back	bring me back | b. a. paris	2018	267	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:30.796321+00	2026-10-10 09:49:30.796321+00	f
+843	Gemina	gemina | amie kaufman; jay kristoff	2016	659	Novel	Young adult	English	Blue	Series	t	f	f	2026-10-10 09:49:30.803581+00	2026-10-10 09:49:30.803581+00	f
+844	Follow Me to Ground	follow me to ground | sue rainsford	2018	208	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:30.889465+00	2026-10-10 09:49:30.889465+00	f
+845	Wild at Heart	wild at heart | k. a. tucker	2020	456	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:30.896573+00	2026-10-10 09:49:30.896573+00	f
+846	Pines	pines | blake crouch	2012	299	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:30.953544+00	2026-10-10 09:49:30.953544+00	f
+847	All Your Twisted Secrets	all your twisted secrets | diana urban	2020	400	Novel	Young adult	English	White	Standalone	f	t	f	2026-10-10 09:49:30.974655+00	2026-10-10 09:49:30.974655+00	f
+848	Down Among the Sticks and Bones	down among the sticks and bones | seanan mcguire	2017	187	Novel	Young adult	English	Black	Series	f	t	f	2026-10-10 09:49:30.982046+00	2026-10-10 09:49:30.982046+00	f
+849	Salt to the Sea	salt to the sea | ruta sepetys	2016	342	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:31.010431+00	2026-10-10 09:49:31.010431+00	f
+850	The Falling in Love Montage	the falling in love montage | ciara smyth	2020	368	Novel	Young adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:31.073683+00	2026-10-10 09:49:31.073683+00	f
+851	Beneath the Sugar Sky	beneath the sugar sky | seanan mcguire	2018	174	Novel	Young adult	English	Pink	Series	t	t	f	2026-10-10 09:49:31.081707+00	2026-10-10 09:49:31.081707+00	f
+852	Clown in a Cornfield	clown in a cornfield | adam cesare	2020	352	Novel	Young adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:31.154771+00	2026-10-10 09:49:31.154771+00	f
+853	The Woman in Cabin 10	the woman in cabin 10 | ruth ware	2016	351	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:31.163531+00	2026-10-10 09:49:31.163531+00	f
+854	Undercover Bromance	undercover bromance | lyssa kay adams	2020	320	Novel	Adult	English	Yellow	Series	t	f	f	2026-10-10 09:49:31.193652+00	2026-10-10 09:49:31.193652+00	f
+855	Freshwater	freshwater | akwaeke emezi	2018	229	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:49:31.269457+00	2026-10-10 09:49:31.269457+00	f
+856	My Dark Vanessa	my dark vanessa | kate elizabeth russell	2020	373	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:31.293447+00	2026-10-10 09:49:31.293447+00	f
+857	Something in the Water	something in the water | catherine steadman	2018	366	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:31.368812+00	2026-10-10 09:49:31.368812+00	f
+858	It	it | stephen king	1986	1376	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:49:31.376327+00	2026-10-10 09:49:31.376327+00	f
+859	The Shadows	the shadows | alex north	2020	336	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:31.450532+00	2026-10-10 09:49:31.450532+00	f
+860	The Death of Mrs. Westaway	the death of mrs. westaway | ruth ware	2018	381	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:31.459396+00	2026-10-10 09:49:31.459396+00	f
+861	Wonderland	wonderland | zoje stage	2020	354	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:31.46705+00	2026-10-10 09:49:31.46705+00	f
+862	Kill Creek	kill creek | scott thomas	2017	416	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:31.502502+00	2026-10-10 09:49:31.502502+00	f
+863	When No One is Watching	when no one is watching | alyssa cole	2020	368	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:31.569841+00	2026-10-10 09:49:31.569841+00	f
+864	Grad zvijeri	grad zvijeri | andrea tomić	2019	321	Novel	Adult	Croatian	Blue	Standalone	f	f	f	2026-10-10 09:49:31.592538+00	2026-10-10 09:49:31.592538+00	f
+865	Blue Lily, Lily Blue	blue lily, lily blue | maggie stiefvater	2014	381	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:31.652882+00	2026-10-10 09:49:31.652882+00	f
+866	Survivor Song	survivor song | paul tremblay	2020	320	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:31.684811+00	2026-10-10 09:49:31.684811+00	f
+867	Felix Ever After	felix ever after | kacen callender	2020	368	Novel	Young adult	English	Orange	Standalone	t	t	f	2026-10-10 09:49:31.693347+00	2026-10-10 09:49:31.693347+00	f
+868	Malorie	malorie | josh malerman	2020	301	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:31.769498+00	2026-10-10 09:49:31.769498+00	f
+869	The Sun Down Motel	the sun down motel | simone st. james	2020	389	Novel	Adult	English	Multicolor	Standalone	f	f	f	2026-10-10 09:49:31.793735+00	2026-10-10 09:49:31.793735+00	f
+870	The Hollow Places	the hollow places | t. kingfisher	2020	352	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:31.869801+00	2026-10-10 09:49:31.869801+00	f
+871	In a Holidaze	in a holidaze | christina lauren	2020	336	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:31.878424+00	2026-10-10 09:49:31.878424+00	f
+872	One by One	one by one | ruth ware	2020	372	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:31.886595+00	2026-10-10 09:49:31.886595+00	f
+873	I'm Thinking of Ending Things	i'm thinking of ending things | iain reid	2016	210	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:31.984899+00	2026-10-10 09:49:31.984899+00	f
+874	The Raven King	the raven king | maggie stiefvater	2016	438	Novel	Young adult	English	White	Series	f	t	f	2026-10-10 09:49:31.99333+00	2026-10-10 09:49:31.99333+00	f
+875	Layla	layla | colleen hoover	2020	301	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:32.001179+00	2026-10-10 09:49:32.001179+00	f
+876	Faking It	faking it | cora carmack	2013	271	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:32.0849+00	2026-10-10 09:49:32.0849+00	f
+877	NOS4A2	nos4a2 | joe hill	2013	575	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:32.107355+00	2026-10-10 09:49:32.107355+00	f
+878	Sleigh Bells in the Snow	sleigh bells in the snow | sarah morgan	2013	297	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:32.171156+00	2026-10-10 09:49:32.171156+00	f
+879	In the Dream House	in the dream house | carmen maria machado	2019	251	Memoir	Adult	English	Green	Standalone	t	t	f	2026-10-10 09:49:32.196527+00	2026-10-10 09:49:32.196527+00	f
+880	The Quality of Silence	the quality of silence | rosamund lupton	2015	292	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:32.372681+00	2026-10-10 09:49:32.372681+00	f
+881	The Thousandth Floor	the thousandth floor | katherine mcgee	2016	385	Novel	Young adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:32.450494+00	2026-10-10 09:49:32.450494+00	f
+882	Written in the Stars	written in the stars | alexandria bellefleur	2020	384	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:32.473371+00	2026-10-10 09:49:32.473371+00	f
+883	Beartown	beartown | fredrik backman	2016	439	Novel	Adult	Swedish	Blue	Series	f	f	f	2026-10-10 09:49:32.496958+00	2026-10-10 09:49:32.496958+00	f
+884	The Cousins	the cousins | karen m. mcmanus	2020	337	Novel	Young adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:32.556976+00	2026-10-10 09:49:32.556976+00	f
+885	The Boy in the Headlights	the boy in the headlights | samuel bjørk	2018	423	Novel	Adult	Norwegian	Black	Series	f	f	f	2026-10-10 09:49:32.588616+00	2026-10-10 09:49:32.588616+00	f
+886	Darling Rose Gold	darling rose gold | stephanie wrobel	2020	307	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:32.659843+00	2026-10-10 09:49:32.659843+00	f
+887	The Wrong Family	the wrong family | tarryn fisher	2020	336	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:32.676937+00	2026-10-10 09:49:32.676937+00	f
+888	O ljubavi, spletkama i svemu pomalo	o ljubavi, spletkama i svemu pomalo | vlasta golub	2016	144	Novel	Young adult	Croatian	White	Standalone	f	f	f	2026-10-10 09:49:32.778199+00	2026-10-10 09:49:32.778199+00	f
+889	The Dazzling Heights	the dazzling heights | katherine mcgee	2017	364	Novel	Young adult	English	Blue	Series	f	f	f	2026-10-10 09:49:32.78641+00	2026-10-10 09:49:32.78641+00	f
+890	Heart Bones	heart bones | colleen hoover	2020	338	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:32.794254+00	2026-10-10 09:49:32.794254+00	f
+891	The Ex Talk	the ex talk | rachel lynn solomon	2021	336	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:32.879087+00	2026-10-10 09:49:32.879087+00	f
+892	The Whisper Man	the whisper man | alex north	2018	321	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:32.887215+00	2026-10-10 09:49:32.887215+00	f
+893	Black Eyed Susans	black eyed susans | julia heaberlin	2015	359	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:32.965775+00	2026-10-10 09:49:32.965775+00	f
+894	Beautiful Bastard	beautiful bastard | christina lauren	2013	252	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:32.975772+00	2026-10-10 09:49:32.975772+00	f
+895	Crazy Stupid Bromance	crazy stupid bromance | lyssa kay adams	2020	342	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:32.985285+00	2026-10-10 09:49:32.985285+00	f
+896	The Towering Sky	the towering sky | katherine mcgee	2018	388	Novel	Young adult	English	Pink	Series	f	f	f	2026-10-10 09:49:33.054948+00	2026-10-10 09:49:33.054948+00	f
+897	Pet	pet | akwaeke emezi	2019	208	Novel	Middle-grade	English	Pink	Standalone	t	t	f	2026-10-10 09:49:33.068621+00	2026-10-10 09:49:33.068621+00	f
+898	Beautiful Bitch	beautiful bitch | christina lauren	2013	175	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:33.154631+00	2026-10-10 09:49:33.154631+00	f
+899	Behind Her Eyes	behind her eyes | sarah pinborough	2016	353	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:33.164498+00	2026-10-10 09:49:33.164498+00	f
+900	The Cavern	the cavern | alister hodge	2019	207	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:33.310608+00	2026-10-10 09:49:33.310608+00	f
+901	The Kiss Quotient	the kiss quotient | helen hoang	2018	290	Novel	Adult	English	Teal	Series	t	f	f	2026-10-10 09:49:33.354206+00	2026-10-10 09:49:33.354206+00	f
+902	The Seven Husbands of Evelyn Hugo	the seven husbands of evelyn hugo | taylor jenkins reid	2017	416	Novel	Adult	English	Green	Standalone	t	t	f	2026-10-10 09:49:33.386206+00	2026-10-10 09:49:33.386206+00	f
+903	These Witches Don't Burn	these witches don't burn | isabel sterling	2019	336	Novel	Young adult	English	Purple	Series	f	t	f	2026-10-10 09:49:33.473986+00	2026-10-10 09:49:33.473986+00	f
+904	Elevation	elevation | stephen king	2018	146	Novella	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:33.5523+00	2026-10-10 09:49:33.5523+00	f
+905	Beautiful Stranger	beautiful stranger | christina lauren	2013	279	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:33.568895+00	2026-10-10 09:49:33.568895+00	f
+906	In an Absent Dream	in an absent dream | seanan mcguire	2019	187	Novella	Young adult	English	Teal	Series	f	f	f	2026-10-10 09:49:33.58785+00	2026-10-10 09:49:33.58785+00	f
+907	Binti	binti | nnedi okorafor	2015	96	Novella	Young adult	English	Brown	Series	t	f	f	2026-10-10 09:49:33.719475+00	2026-10-10 09:49:33.719475+00	f
+908	Beautiful Bombshell	beautiful bombshell | christina lauren	2013	173	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:33.758029+00	2026-10-10 09:49:33.758029+00	f
+909	The Idea of You	the idea of you | robinne lee	2017	372	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:33.856369+00	2026-10-10 09:49:33.856369+00	f
+910	Black Sun	black sun | rebecca roanhorse	2020	454	Novel	Adult	English	Black	Series	t	t	f	2026-10-10 09:49:33.889435+00	2026-10-10 09:49:33.889435+00	f
+911	Heart-Shaped Box	heart-shaped box | joe hill	2007	265	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:33.957615+00	2026-10-10 09:49:33.957615+00	f
+912	99 Percent Mine	99 percent mine | sally thorne	2019	295	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:34.055874+00	2026-10-10 09:49:34.055874+00	f
+913	The Heart's Invisible Furies	the heart's invisible furies | john boyne	2017	582	Novel	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:49:34.093294+00	2026-10-10 09:49:34.093294+00	f
+914	Circe	circe | madeline miller	2018	347	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:34.155426+00	2026-10-10 09:49:34.155426+00	f
+915	Every Vow You Break	every vow you break | peter swanson	2021	308	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:34.168635+00	2026-10-10 09:49:34.168635+00	f
+916	The Colour of Bee Larkham's Murder	the colour of bee larkham's murder | sarah j. harris	2018	371	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:34.284259+00	2026-10-10 09:49:34.284259+00	f
+917	The Thursday Murder Club	the thursday murder club | richard osman	2020	324	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:34.35602+00	2026-10-10 09:49:34.35602+00	f
+918	The Golden Cage	the golden cage | camilla läckberg	2019	290	Novel	Adult	Swedish	Pink	Series	f	f	f	2026-10-10 09:49:34.454764+00	2026-10-10 09:49:34.454764+00	f
+919	A House at the Bottom of the Lake	a house at the bottom of the lake | josh malerman	2016	118	Novella	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:34.465482+00	2026-10-10 09:49:34.465482+00	f
+920	They Never Learn	they never learn | layne fargo	2020	378	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:49:34.562449+00	2026-10-10 09:49:34.562449+00	f
+921	31 nogometni teren	31 nogometni teren | matea čvagić prašnjak	2020	335	Novel	Adult	Croatian	Purple	Standalone	f	f	f	2026-10-10 09:49:34.592578+00	2026-10-10 09:49:34.592578+00	f
+922	The Perfect Child	the perfect child | lucinda berry	2019	365	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:34.694313+00	2026-10-10 09:49:34.694313+00	f
+923	Broken Things	broken things | lauren oliver	2018	408	Novel	Young adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:34.782496+00	2026-10-10 09:49:34.782496+00	f
+924	The Push	the push | ashley audrain	2021	307	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:34.858954+00	2026-10-10 09:49:34.858954+00	f
+925	Anxious People	anxious people | fredrik backman	2019	357	Novel	Adult	Swedish	Yellow	Standalone	f	t	f	2026-10-10 09:49:34.876551+00	2026-10-10 09:49:34.876551+00	f
+926	I'm Not Scared	i'm not scared | niccolò ammaniti	2001	225	Novel	Adult	Italian	Beige	Standalone	f	f	f	2026-10-10 09:49:35.039902+00	2026-10-10 09:49:35.039902+00	f
+927	My Brilliant Friend	my brilliant friend | elena ferrante	2011	349	Novel	Adult	Italian	Gray	Series	f	f	f	2026-10-10 09:49:35.162479+00	2026-10-10 09:49:35.162479+00	f
+928	Forever Wild	forever wild | k. a. tucker	2020	158	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:35.173881+00	2026-10-10 09:49:35.173881+00	f
+929	Cesta za Zion	cesta za zion | matea čvagić prašnjak	2018	139	Novella	Adult	Croatian	Pink	Standalone	f	f	f	2026-10-10 09:49:35.189239+00	2026-10-10 09:49:35.189239+00	f
+930	The Bright Lands	the bright lands | john fram	2020	473	Novel	Adult	English	Purple	Standalone	f	t	f	2026-10-10 09:49:35.501271+00	2026-10-10 09:49:35.501271+00	f
+931	Cemetery Boys	cemetery boys | aiden thomas	2020	352	Novel	Young adult	English	Pink	Standalone	t	t	f	2026-10-10 09:49:35.528642+00	2026-10-10 09:49:35.528642+00	f
+932	Malibu Rising	malibu rising | taylor jenkins reid	2021	384	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:35.555821+00	2026-10-10 09:49:35.555821+00	f
+933	Cuando estuvimos muertos	cuando estuvimos muertos | francesc miralles	2010	351	Novel	Young adult	Spanish	Black	Series	f	f	f	2026-10-10 09:49:35.595667+00	2026-10-10 09:49:35.595667+00	f
+934	This is Not a Horror Movie	this is not a horror movie | sara dobie bauer	2021	280	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:35.673414+00	2026-10-10 09:49:35.673414+00	f
+935	The Duke and I	the duke and i | julia quinn	2000	348	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:35.754681+00	2026-10-10 09:49:35.754681+00	f
+936	Sawkill Girls	sawkill girls | claire legrand	2018	447	Novel	Young adult	English	Gray	Standalone	t	t	f	2026-10-10 09:49:35.782349+00	2026-10-10 09:49:35.782349+00	f
+937	Misery	misery | stephen king	1987	293	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:35.790971+00	2026-10-10 09:49:35.790971+00	f
+938	The One	the one | john marrs	2016	437	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:35.883249+00	2026-10-10 09:49:35.883249+00	f
+939	The Mother-in-Law	the mother-in-law | sally hepworth	2019	316	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:35.971151+00	2026-10-10 09:49:35.971151+00	f
+940	Lie With Me	lie with me | philippe besson	2017	149	Novella	Adult	French	Gray	Standalone	f	t	f	2026-10-10 09:49:36.054082+00	2026-10-10 09:49:36.054082+00	f
+941	The Broken Girls	the broken girls | simone st. james	2018	356	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:36.063188+00	2026-10-10 09:49:36.063188+00	f
+942	My Best Friend's Exorcism	my best friend's exorcism | grady hendrix	2016	337	Novel	Young adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:36.07484+00	2026-10-10 09:49:36.07484+00	f
+943	The Chalk Man	the chalk man | c. j. tudor	2018	298	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:36.084458+00	2026-10-10 09:49:36.084458+00	f
+944	Survive the Night	survive the night | riley sager	2021	336	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:36.155426+00	2026-10-10 09:49:36.155426+00	f
+945	Night of the Mannequins	night of the mannequins | stephen graham jones	2020	136	Novella	Adult	English	Beige	Standalone	t	f	f	2026-10-10 09:49:36.250504+00	2026-10-10 09:49:36.250504+00	f
+946	The Soulmate Equation	the soulmate equation | christina lauren	2021	368	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:36.260904+00	2026-10-10 09:49:36.260904+00	f
+947	Losing It	losing it | cora carmack	2012	222	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:36.271169+00	2026-10-10 09:49:36.271169+00	f
+948	The Surgeon	the surgeon | tess gerritsen	2001	330	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:36.280502+00	2026-10-10 09:49:36.280502+00	f
+949	Beautiful Player	beautiful player | christina lauren	2013	432	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:36.356437+00	2026-10-10 09:49:36.356437+00	f
+950	The Final Girl Support Group	the final girl support group | grady hendrix	2021	393	Novel	Adult	English	Red	Standalone	t	t	f	2026-10-10 09:49:36.365641+00	2026-10-10 09:49:36.365641+00	f
+951	Roomies	roomies | christina lauren	2017	369	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:36.374515+00	2026-10-10 09:49:36.374515+00	f
+952	One Last Stop	one last stop | casey mcquiston	2021	422	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:36.515691+00	2026-10-10 09:49:36.515691+00	f
+953	Warcross	warcross | marie lu	2017	353	Novel	Young adult	English	White	Series	t	f	f	2026-10-10 09:49:36.574715+00	2026-10-10 09:49:36.574715+00	f
+954	Finding It	finding it | cora carmack	2013	259	Novel	Adult	English	Multicolor	Series	f	f	f	2026-10-10 09:49:36.58301+00	2026-10-10 09:49:36.58301+00	f
+955	Finlay Donovan Is Killing It	finlay donovan is killing it | elle cosimano	2021	314	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:36.660322+00	2026-10-10 09:49:36.660322+00	f
+956	The Flatshare	the flatshare | beth o'leary	2019	414	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:36.68537+00	2026-10-10 09:49:36.68537+00	f
+957	The Roomate	the roomate | rosie danan	2020	325	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:36.769911+00	2026-10-10 09:49:36.769911+00	f
+958	Suddenly Last Summer	suddenly last summer | sarah morgan	2014	297	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:36.778718+00	2026-10-10 09:49:36.778718+00	f
+959	Štorka	štorka | jelena hrvoj	2015	414	Novel	Adult	Croatian	Green	Series	f	f	f	2026-10-10 09:49:36.854207+00	2026-10-10 09:49:36.854207+00	f
+960	The Taking of Jake Livingston	the taking of jake livingston | ryan douglass	2021	244	Novel	Young adult	English	Teal	Standalone	t	t	f	2026-10-10 09:49:36.880596+00	2026-10-10 09:49:36.880596+00	f
+961	Beautiful Beginning	beautiful beginning | christina lauren	2013	241	Novella	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:36.950737+00	2026-10-10 09:49:36.950737+00	f
+962	Birthday Girl	birthday girl | penelope douglas	2018	417	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:36.988364+00	2026-10-10 09:49:36.988364+00	f
+963	Beautiful Beloved	beautiful beloved | christina lauren	2015	129	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:36.997143+00	2026-10-10 09:49:36.997143+00	f
+964	The Drowning Kind	the drowning kind | jennifer mcmahon	2021	307	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:37.079205+00	2026-10-10 09:49:37.079205+00	f
+965	The Long Way to a Small, Angry Planet	the long way to a small, angry planet | becky chambers	2014	415	Novel	Adult	English	Purple	Series	t	t	f	2026-10-10 09:49:37.156165+00	2026-10-10 09:49:37.156165+00	f
+966	The Invisible Life of Addie Larue	the invisible life of addie larue | v. e. schwab	2020	442	Novel	Adult	English	Brown	Standalone	f	t	f	2026-10-10 09:49:37.165434+00	2026-10-10 09:49:37.165434+00	f
+967	The Risk	the risk | s. t. abby	2016	105	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:37.270948+00	2026-10-10 09:49:37.270948+00	f
+968	Doručak	doručak | dinko mihovilović	2021	160	Novella	Adult	Croatian	Beige	Standalone	f	f	f	2026-10-10 09:49:37.350892+00	2026-10-10 09:49:37.350892+00	f
+969	Things Have Gotten Worse Since We Last Spoke	things have gotten worse since we last spoke | eric larocca	2021	102	Novella	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:37.386704+00	2026-10-10 09:49:37.386704+00	f
+970	Little Eyes	little eyes | samanta schweblin	2018	207	Novel	Adult	Spanish	White	Standalone	f	f	f	2026-10-10 09:49:37.47374+00	2026-10-10 09:49:37.47374+00	f
+971	Isn't It Bromantic	isn't it bromantic | lyssa kay adams	2021	350	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:37.483594+00	2026-10-10 09:49:37.483594+00	f
+972	Get a Life, Chloe Brown	get a life, chloe brown | talia hibbert	2019	369	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:49:37.584134+00	2026-10-10 09:49:37.584134+00	f
+973	The Tattooist of Auschwitz	the tattooist of auschwitz | heather morris	2017	225	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:37.654834+00	2026-10-10 09:49:37.654834+00	f
+974	Daisy Jones & The Six	daisy jones & the six | taylor jenkins reid	2019	355	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:37.664559+00	2026-10-10 09:49:37.664559+00	f
+975	The Hole	the hole | hye young pyun	2016	137	Novella	Adult	Korean	Beige	Standalone	t	f	f	2026-10-10 09:49:37.754608+00	2026-10-10 09:49:37.754608+00	f
+976	Sidetracked	sidetracked | s. t. abby	2016	95	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:37.765153+00	2026-10-10 09:49:37.765153+00	f
+977	The Shining	the shining | stephen king	1977	412	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:37.775096+00	2026-10-10 09:49:37.775096+00	f
+978	The Sanatorium	the sanatorium | sarah pearse	2021	346	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:37.953784+00	2026-10-10 09:49:37.953784+00	f
+979	Yes, Daddy	yes, daddy | jonathan parks-ramage	2021	282	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:37.980429+00	2026-10-10 09:49:37.980429+00	f
+980	The Rumor	the rumor | lesley kara	2018	295	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:38.070556+00	2026-10-10 09:49:38.070556+00	f
+981	The Silent Companions	the silent companions | laura purcell	2017	326	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:38.153199+00	2026-10-10 09:49:38.153199+00	f
+982	To Be Taught, If Fortunate	to be taught, if fortunate | becky chambers	2019	175	Novella	Adult	English	Orange	Standalone	t	t	f	2026-10-10 09:49:38.162129+00	2026-10-10 09:49:38.162129+00	f
+983	Project Hail Mary	project hail mary | andy weir	2021	486	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:38.250544+00	2026-10-10 09:49:38.250544+00	f
+984	Believe Me	believe me | j. p. delaney	2018	360	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:38.285588+00	2026-10-10 09:49:38.285588+00	f
+985	The Maidens	the maidens | alex michaelides	2021	337	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:38.372889+00	2026-10-10 09:49:38.372889+00	f
+986	Resin	resin | ane riel	2018	246	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:38.453967+00	2026-10-10 09:49:38.453967+00	f
+987	The Patient	the patient | jasper dewitt	2020	224	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:38.482678+00	2026-10-10 09:49:38.482678+00	f
+988	The Arrangement	the arrangement | kiersten modglin	2021	228	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:38.571803+00	2026-10-10 09:49:38.571803+00	f
+989	In My Dreams I Hold a Knife	in my dreams i hold a knife | ashley winstead	2021	329	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:38.655877+00	2026-10-10 09:49:38.655877+00	f
+990	The Package	the package | sebastian fitzek	2016	277	Novel	Adult	German	Beige	Standalone	f	f	f	2026-10-10 09:49:38.752854+00	2026-10-10 09:49:38.752854+00	f
+991	Radiance	radiance | grace draven	2014	297	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:49:38.785683+00	2026-10-10 09:49:38.785683+00	f
+992	House of Hollow	house of hollow | krystal sutherland	2021	292	Novel	Young adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:38.871685+00	2026-10-10 09:49:38.871685+00	f
+993	Rock, Paper, Scissors	rock, paper, scissors | alice feeney	2021	310	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:38.960944+00	2026-10-10 09:49:38.960944+00	f
+994	56 Days	56 days | catherine ryan howard	2021	305	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:39.055436+00	2026-10-10 09:49:39.055436+00	f
+995	Volja	volja | mana pass	2021	253	Novel	Adult	Croatian	Red	Series	f	f	f	2026-10-10 09:49:39.080355+00	2026-10-10 09:49:39.080355+00	f
+996	The Love Hypothesis	the love hypothesis | ali hazelwood	2021	352	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:39.175244+00	2026-10-10 09:49:39.175244+00	f
+997	For Your Own Good	for your own good | samantha downing	2021	347	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:39.254089+00	2026-10-10 09:49:39.254089+00	f
+998	Falling	falling | t. j. newman	2021	270	Novel	Adult	English	Multicolor	Standalone	f	f	f	2026-10-10 09:49:39.282476+00	2026-10-10 09:49:39.282476+00	f
+999	False Witness	false witness | karin slaughter	2021	435	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:39.370945+00	2026-10-10 09:49:39.370945+00	f
+1000	Beautiful Secret	beautiful secret | christina lauren	2015	307	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:39.453822+00	2026-10-10 09:49:39.453822+00	f
+1001	Near the Bone	near the bone | christina henry	2021	336	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:39.493964+00	2026-10-10 09:49:39.493964+00	f
+1002	The Whispering Dead	the whispering dead | darcy coates	2021	256	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:39.573157+00	2026-10-10 09:49:39.573157+00	f
+1003	Dark Lover	dark lover | j.r. ward	2005	455	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:39.674108+00	2026-10-10 09:49:39.674108+00	f
+1004	The Wife Upstairs	the wife upstairs | rachel hawkins	2021	290	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:39.760482+00	2026-10-10 09:49:39.760482+00	f
+1005	The Last House on Needless Street	the last house on needless street | catriona ward	2021	363	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:39.857214+00	2026-10-10 09:49:39.857214+00	f
+1006	Window Shopping	window shopping | tessa bailey	2021	258	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:39.887898+00	2026-10-10 09:49:39.887898+00	f
+1007	Dipped in Holly	dipped in holly | dana isaly	2021	55	Novella	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:39.977526+00	2026-10-10 09:49:39.977526+00	f
+1008	Maybe This Christmas	maybe this christmas | sarah morgan	2014	336	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:40.053162+00	2026-10-10 09:49:40.053162+00	f
+1009	Scarlet Angel	scarlet angel | s. t. abby	2016	114	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:40.064017+00	2026-10-10 09:49:40.064017+00	f
+1010	Stolen Tongues	stolen tongues | felix blackwell	2017	298	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:40.155769+00	2026-10-10 09:49:40.155769+00	f
+1011	A Psalm for the Wild-Built	a psalm for the wild-built | becky chambers	2021	131	Novella	Adult	English	Green	Series	f	t	f	2026-10-10 09:49:40.16632+00	2026-10-10 09:49:40.16632+00	f
+1012	A Noise Downstairs	a noise downstairs | linwood barclay	2018	356	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:40.278769+00	2026-10-10 09:49:40.278769+00	f
+1013	The Maid	the maid | nita prose	2022	304	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:40.377904+00	2026-10-10 09:49:40.377904+00	f
+1014	Weather Girl	weather girl | rachel lynn solomon	2022	352	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:40.455534+00	2026-10-10 09:49:40.455534+00	f
+1015	Where They Wait	where they wait | scott carson	2021	359	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:40.555876+00	2026-10-10 09:49:40.555876+00	f
+1016	Ice Planet Barbarians	ice planet barbarians | ruby dixon	2015	188	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:40.656559+00	2026-10-10 09:49:40.656559+00	f
+1017	Comfort Me With Apples	comfort me with apples | catherynne m. valente	2021	103	Novella	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:40.756145+00	2026-10-10 09:49:40.756145+00	f
+1018	Games We Play	games we play | dana isaly	2021	90	Novella	Adult	English	Purple	Series	f	f	f	2026-10-10 09:49:40.769421+00	2026-10-10 09:49:40.769421+00	f
+1019	Secrets We Hunt	secrets we hunt | dana isaly	2022	72	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:40.853532+00	2026-10-10 09:49:40.853532+00	f
+1020	These Silent Woods	these silent woods | kimi cunningham grant	2021	239	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:40.953036+00	2026-10-10 09:49:40.953036+00	f
+1021	Reminders of Him	reminders of him | colleen hoover	2022	327	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:40.96401+00	2026-10-10 09:49:40.96401+00	f
+1022	Claimed By Cupid	claimed by cupid | dana isaly	2022	63	Novella	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:40.975678+00	2026-10-10 09:49:40.975678+00	f
+1023	Under One Roof	under one roof | ali hazelwood	2022	112	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:41.062882+00	2026-10-10 09:49:41.062882+00	f
+1024	Eyeshot	eyeshot | taylor adams	2014	287	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:41.153527+00	2026-10-10 09:49:41.153527+00	f
+1025	Hang the Moon	hang the moon | alexandria bellefleur	2021	364	Novel	Adult	English	Purple	Series	f	t	f	2026-10-10 09:49:41.162815+00	2026-10-10 09:49:41.162815+00	f
+1026	Stuck With You	stuck with you | ali hazelwood	2022	127	Novella	Adult	English	Green	Series	f	f	f	2026-10-10 09:49:41.174928+00	2026-10-10 09:49:41.174928+00	f
+1027	Dead Silence	dead silence | s. a. barnes	2022	343	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:41.315546+00	2026-10-10 09:49:41.315546+00	f
+1028	Scream For Us	scream for us | molly doyle	2021	84	Novella	Adult	English	Purple	Series	f	f	f	2026-10-10 09:49:41.355414+00	2026-10-10 09:49:41.355414+00	f
+1029	The Man Who Died Twice	the man who died twice | richard osman	2021	324	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:41.365982+00	2026-10-10 09:49:41.365982+00	f
+1030	All the Lies	all the lies | s. t. abby	2016	141	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:41.453881+00	2026-10-10 09:49:41.453881+00	f
+1031	Below Zero	below zero | ali hazelwood	2022	139	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:41.467413+00	2026-10-10 09:49:41.467413+00	f
+1032	Chef's Kiss	chef's kiss | tj alexander	2022	320	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:41.579522+00	2026-10-10 09:49:41.579522+00	f
+1033	Hide	hide | kiersten white	2022	256	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:41.674249+00	2026-10-10 09:49:41.674249+00	f
+1034	Before I Go To Sleep	before i go to sleep | s. j. watson	2011	288	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:41.782055+00	2026-10-10 09:49:41.782055+00	f
+1035	My Killer Vacation	my killer vacation | tessa bailey	2022	290	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:41.855293+00	2026-10-10 09:49:41.855293+00	f
+1036	The Butterfly Garden	the butterfly garden | dot hutchison	2016	285	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:41.953028+00	2026-10-10 09:49:41.953028+00	f
+1037	People We Meet on Vacation	people we meet on vacation | emily henry	2021	361	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:41.974798+00	2026-10-10 09:49:41.974798+00	f
+1038	Bath Haus	bath haus | p. j. vernon	2021	312	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:49:42.105797+00	2026-10-10 09:49:42.105797+00	f
+1039	The Troop	the troop | nick cutter	2014	355	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:42.198776+00	2026-10-10 09:49:42.198776+00	f
+1040	Petrified Women	petrified women | jeremy ray	2021	91	Novella	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:42.282607+00	2026-10-10 09:49:42.282607+00	f
+1041	We Were the Lucky Ones	we were the lucky ones | georgia hunter	2017	452	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:42.388633+00	2026-10-10 09:49:42.388633+00	f
+1042	He Started It	he started it | samantha downing	2020	377	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:42.461144+00	2026-10-10 09:49:42.461144+00	f
+1043	Patricia Wants to Cuddle	patricia wants to cuddle | samantha allen	2022	220	Novel	Adult	English	Teal	Standalone	f	t	f	2026-10-10 09:49:42.566627+00	2026-10-10 09:49:42.566627+00	f
+1045	Cursed Bunny	cursed bunny | bora chung	2017	251	Short stories	Adult	Korean	Purple	Standalone	t	f	f	2026-10-10 09:49:42.779888+00	2026-10-10 09:49:42.779888+00	f
+1046	Fever Dream	fever dream | samanta schweblin	2017	151	Novella	Adult	Spanish	Brown	Standalone	f	f	f	2026-10-10 09:49:42.797575+00	2026-10-10 09:49:42.797575+00	f
+1047	Horrorstör	horrorstör | grady hendrix	2014	248	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:42.86721+00	2026-10-10 09:49:42.86721+00	f
+1048	Crossroads	crossroads | laurel hightower	2020	115	Novella	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:42.98886+00	2026-10-10 09:49:42.98886+00	f
+1049	Horseman	horseman | christina henry	2021	347	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:49:43.055862+00	2026-10-10 09:49:43.055862+00	f
+1050	A Flicker in the Dark	a flicker in the dark | stacy willingham	2022	337	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:43.156572+00	2026-10-10 09:49:43.156572+00	f
+1051	We Need to Do Something	we need to do something | max booth iii	2020	160	Novella	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:43.25706+00	2026-10-10 09:49:43.25706+00	f
+1052	Kiss Her Once for Me	kiss her once for me | alison cochrun	2022	368	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:43.354507+00	2026-10-10 09:49:43.354507+00	f
+1053	The Visitor	the visitor | sergio gomez	2020	64	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:43.454292+00	2026-10-10 09:49:43.454292+00	f
+1054	Pretty Girls	pretty girls | karin slaughter	2015	442	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:43.467794+00	2026-10-10 09:49:43.467794+00	f
+1055	Paint It All Red	paint it all red | s. t. abby	2016	176	Novella	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:43.556061+00	2026-10-10 09:49:43.556061+00	f
+1056	Sign Here	sign here | claudia lux	2022	390	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:43.656033+00	2026-10-10 09:49:43.656033+00	f
+1057	Ghost 19	ghost 19 | simone st. james	2023	109	Novella	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:43.669574+00	2026-10-10 09:49:43.669574+00	f
+1058	Wonderland	wonderland | jennifer hilier	2015	343	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:43.782102+00	2026-10-10 09:49:43.782102+00	f
+1059	And Then I Woke Up	and then i woke up | malcolm devlin	2022	127	Novella	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:43.874642+00	2026-10-10 09:49:43.874642+00	f
+1060	Kuća slomljenih lutaka	kuća slomljenih lutaka | vladimira becić	2017	549	Novel	Adult	Croatian	Black	Standalone	f	f	f	2026-10-10 09:49:43.954926+00	2026-10-10 09:49:43.954926+00	f
+1061	Finlay Donovan Knocks 'Em Dead	finlay donovan knocks 'em dead | elle cosimano	2022	357	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:43.965202+00	2026-10-10 09:49:43.965202+00	f
+1062	Sparrow	sparrow | l. j. shen	2016	344	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:44.065966+00	2026-10-10 09:49:44.065966+00	f
+1063	Nana	nana | brandon massey	2018	246	Novel	Adult	English	Green	Standalone	t	f	f	2026-10-10 09:49:44.155831+00	2026-10-10 09:49:44.155831+00	f
+1064	Take a Hint, Dani Brown	take a hint, dani brown | talia hibbert	2020	361	Novel	Adult	English	Yellow	Series	t	f	f	2026-10-10 09:49:44.165482+00	2026-10-10 09:49:44.165482+00	f
+1065	The Long Walk	the long walk | stephen king	1979	270	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:44.174943+00	2026-10-10 09:49:44.174943+00	f
+1066	Confessions	confessions | kanae minato	2008	234	Novel	Adult	Japanese	Red	Standalone	t	f	f	2026-10-10 09:49:44.293031+00	2026-10-10 09:49:44.293031+00	f
+1067	Finna	finna | nino cipri	2020	90	Novella	Adult	English	Blue	Series	t	t	f	2026-10-10 09:49:44.370614+00	2026-10-10 09:49:44.370614+00	f
+1068	The House Guest	the house guest | mark edwards	2020	287	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:44.481941+00	2026-10-10 09:49:44.481941+00	f
+1069	How to Sell a Haunted House	how to sell a haunted house | grady hendrix	2023	398	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:44.554089+00	2026-10-10 09:49:44.554089+00	f
+1070	The House Across the Lake	the house across the lake | riley sager	2022	349	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:44.563836+00	2026-10-10 09:49:44.563836+00	f
+1071	The Spite House	the spite house | johnny compton	2023	261	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:49:44.675808+00	2026-10-10 09:49:44.675808+00	f
+1072	Secretly Yours	secretly yours | tessa bailey	2023	384	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:44.68792+00	2026-10-10 09:49:44.68792+00	f
+1073	The Writing Retreat	the writing retreat | julia bartz	2023	313	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:44.790146+00	2026-10-10 09:49:44.790146+00	f
+1074	The Couple Next Door	the couple next door | shari lapena	2016	289	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:44.877333+00	2026-10-10 09:49:44.877333+00	f
+1075	Exes and O's	exes and o's | amy lea	2023	361	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:44.957123+00	2026-10-10 09:49:44.957123+00	f
+1076	So Happy For You	so happy for you | celia laskey	2022	300	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:45.059015+00	2026-10-10 09:49:45.059015+00	f
+1077	Several People Are Typing	several people are typing | calvin kasulke	2021	219	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:45.153048+00	2026-10-10 09:49:45.153048+00	f
+3395	Within the Starry Silence	within the starry silence | catherine cowles	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.935652+00	2026-10-11 17:07:55.743015+00	t
+1079	What Lies in the Woods	what lies in the woods | kate alice marshall	2023	322	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:45.25525+00	2026-10-10 09:49:45.25525+00	f
+1080	What Moves the Dead	what moves the dead | t. kingfisher	2022	169	Novella	Adult	English	Green	Series	f	t	f	2026-10-10 09:49:45.26496+00	2026-10-10 09:49:45.26496+00	f
+1081	The Girl in 6E	the girl in 6e | a. r. torre	2014	336	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:45.363118+00	2026-10-10 09:49:45.363118+00	f
+1082	Every Single Secret	every single secret | emily carpenter	2018	306	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:45.452676+00	2026-10-10 09:49:45.452676+00	f
+1083	Whisper Down the Lane	whisper down the lane | clay mcleod chapman	2021	316	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:45.482438+00	2026-10-10 09:49:45.482438+00	f
+1084	Do Not Disturb	do not disturb | a. r. torre	2015	357	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:45.556006+00	2026-10-10 09:49:45.556006+00	f
+1085	Sweethand	sweethand | n. g. peltier	2021	305	Novel	Adult	English	Orange	Series	t	f	f	2026-10-10 09:49:45.65492+00	2026-10-10 09:49:45.65492+00	f
+1086	The Last Word	the last word | taylor adams	2023	358	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:45.667736+00	2026-10-10 09:49:45.667736+00	f
+1087	Not a Happy Family	not a happy family | shari lapena	2021	429	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:45.678086+00	2026-10-10 09:49:45.678086+00	f
+1088	Square³	square³ | mira grant	2021	144	Novella	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:45.756143+00	2026-10-10 09:49:45.756143+00	f
+1089	If You Dare	if you dare | a. r. torre	2015	368	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:45.76776+00	2026-10-10 09:49:45.76776+00	f
+1090	Then She Was Gone	then she was gone | lisa jewell	2017	320	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:45.953979+00	2026-10-10 09:49:45.953979+00	f
+1091	A Closed and Common Orbit	a closed and common orbit | becky chambers	2016	364	Novel	Adult	English	Red	Series	t	t	f	2026-10-10 09:49:45.964548+00	2026-10-10 09:49:45.964548+00	f
+1092	An Elderly Lady Is Up to No Good	an elderly lady is up to no good | helene tursten	2013	93	Short stories	Adult	Swedish	Beige	Series	f	f	f	2026-10-10 09:49:46.063795+00	2026-10-10 09:49:46.063795+00	f
+1093	I Must Betray You	i must betray you | ruta sepetys	2022	310	Novel	Young adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.156629+00	2026-10-10 09:49:46.156629+00	f
+1094	Count Your Lucky Stars	count your lucky stars | alexandria bellefleur	2022	365	Novel	Adult	English	Pink	Series	f	t	f	2026-10-10 09:49:46.170776+00	2026-10-10 09:49:46.170776+00	f
+1095	Children on the Hill	children on the hill | jennifer mcmahon	2022	338	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.255082+00	2026-10-10 09:49:46.255082+00	f
+1096	The Perfect Wife	the perfect wife | j. p. delaney	2019	429	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:46.267498+00	2026-10-10 09:49:46.267498+00	f
+1097	Love and Other Disasters	love and other disasters | anita kelly	2022	384	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:49:46.405831+00	2026-10-10 09:49:46.405831+00	f
+1098	Looking Glass Sound	looking glass sound | catriona ward	2023	323	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:46.450544+00	2026-10-10 09:49:46.450544+00	f
+1099	Never Let You Go	never let you go | chevy stevens	2017	356	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.488205+00	2026-10-10 09:49:46.488205+00	f
+1100	The Soulmate	the soulmate | sally hepworth	2022	269	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:46.55957+00	2026-10-10 09:49:46.55957+00	f
+1101	Maeve Fly	maeve fly | c.j. leede	2023	255	Novella	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:46.664251+00	2026-10-10 09:49:46.664251+00	f
+1102	Consumed	consumed | j.r. ward	2018	419	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:46.675114+00	2026-10-10 09:49:46.675114+00	f
+1103	Practice Makes Perfect	practice makes perfect | sarah adams	2023	352	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:46.783814+00	2026-10-10 09:49:46.783814+00	f
+1104	The Trees Grew Because I Bled There	the trees grew because i bled there | eric larocca	2021	202	Short stories	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:46.85409+00	2026-10-10 09:49:46.85409+00	f
+1105	A Certain Hunger	a certain hunger | chelsea g. summers	2021	317	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:46.955924+00	2026-10-10 09:49:46.955924+00	f
+1106	Our Last Night	our last night | taylor adams	2015	324	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:46.968035+00	2026-10-10 09:49:46.968035+00	f
+1107	All the Dangerous Things	all the dangerous things | stacy willingham	2023	326	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:47.055747+00	2026-10-10 09:49:47.055747+00	f
+1108	Shipped	shipped | angie hockman	2021	321	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:47.157987+00	2026-10-10 09:49:47.157987+00	f
+1109	Penpal	penpal | dathan auerbach	2012	238	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:47.270065+00	2026-10-10 09:49:47.270065+00	f
+1110	The Only One Left	the only one left | riley sager	2023	368	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:47.355692+00	2026-10-10 09:49:47.355692+00	f
+1111	Come Closer	come closer | sara gran	2003	135	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:47.458547+00	2026-10-10 09:49:47.458547+00	f
+1112	You Let Me In	you let me in | lucy clarke	2018	409	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:47.564069+00	2026-10-10 09:49:47.564069+00	f
+1113	Our Wives Under the Sea	our wives under the sea | julia armfield	2022	229	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:47.68922+00	2026-10-10 09:49:47.68922+00	f
+1114	Joyland	joyland | stephen king	2013	283	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:47.721091+00	2026-10-10 09:49:47.721091+00	f
+1115	It Happened One Summer	it happened one summer | tessa bailey	2021	385	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:49:47.764927+00	2026-10-10 09:49:47.764927+00	f
+1116	172 Hours on the Moon	172 hours on the moon | johan harstad	2008	368	Novel	Young adult	Swedish	Black	Standalone	f	f	f	2026-10-10 09:49:47.962834+00	2026-10-10 09:49:47.962834+00	f
+1117	A Twisted Love Story	a twisted love story | samantha downing	2023	370	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:48.119096+00	2026-10-10 09:49:48.119096+00	f
+1118	The Calling	the calling | james frey; nils johnson-shelton	2014	415	Novel	Young adult	English	Yellow	Series	f	f	f	2026-10-10 09:49:48.26676+00	2026-10-10 09:49:48.26676+00	f
+1119	Dead Eleven	dead eleven | jimmy juliano	2023	472	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:48.357925+00	2026-10-10 09:49:48.357925+00	f
+1120	Follow You Home	follow you home | mark edwards	2015	383	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:48.388525+00	2026-10-10 09:49:48.388525+00	f
+1121	Broken Dolls	broken dolls | mique watson	2023	113	Novella	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:48.48717+00	2026-10-10 09:49:48.48717+00	f
+1122	A Head Full of Ghosts	a head full of ghosts | paul tremblay	2015	336	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:48.556647+00	2026-10-10 09:49:48.556647+00	f
+1123	Hook, Line, and Sinker	hook, line, and sinker | tessa bailey	2022	353	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:48.572073+00	2026-10-10 09:49:48.572073+00	f
+1124	The Last One	the last one | will dean	2023	400	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:48.755875+00	2026-10-10 09:49:48.755875+00	f
+1125	Love, Theoretically	love, theoretically | ali hazelwood	2023	407	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:48.767375+00	2026-10-10 09:49:48.767375+00	f
+1126	Rose Madder	rose madder | stephen king	1995	415	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:48.779062+00	2026-10-10 09:49:48.779062+00	f
+1127	The Lying Game	the lying game | ruth ware	2017	453	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:48.857802+00	2026-10-10 09:49:48.857802+00	f
+1128	Good Bad Girl	good bad girl | alice feeney	2023	289	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:48.868815+00	2026-10-10 09:49:48.868815+00	f
+1129	Whalefall	whalefall | daniel kraus	2023	270	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:49.054912+00	2026-10-10 09:49:49.054912+00	f
+1130	Role Playing	role playing | cathy yardley	2023	333	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:49.174009+00	2026-10-10 09:49:49.174009+00	f
+1131	Daisy Darker	daisy darker | alice feeney	2022	336	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:49.2548+00	2026-10-10 09:49:49.2548+00	f
+1132	BETA: A Technological Nightmare	beta: a technological nightmare | sammy scott	2023	501	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:49.359272+00	2026-10-10 09:49:49.359272+00	f
+1133	The Bullet That Missed	the bullet that missed | richard osman	2022	324	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:49.453775+00	2026-10-10 09:49:49.453775+00	f
+1134	We Have Always Lived in the Castle	we have always lived in the castle | shirley jackson	1962	146	Novella	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:49.556939+00	2026-10-10 09:49:49.556939+00	f
+1135	None of This is True	none of this is true | lisa jewell	2023	384	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:49.571806+00	2026-10-10 09:49:49.571806+00	f
+1136	The Family Game	the family game | catherine steadman	2022	379	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:49.658976+00	2026-10-10 09:49:49.658976+00	f
+1137	The Stranger Upstairs	the stranger upstairs | lisa m. matlin	2023	298	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:49.795187+00	2026-10-10 09:49:49.795187+00	f
+1138	Notes on an Execution	notes on an execution | danya kukafka	2022	306	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:49.953215+00	2026-10-10 09:49:49.953215+00	f
+1139	Midnight Is the Darkest Hour	midnight is the darkest hour | ashley winstead	2023	349	Novel	Adult	English	Teal	Standalone	f	t	f	2026-10-10 09:49:49.967183+00	2026-10-10 09:49:49.967183+00	f
+1140	The September House	the september house | carissa orlando	2023	344	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:50.093344+00	2026-10-10 09:49:50.093344+00	f
+1141	The Last Thing To Burn	the last thing to burn | will dean	2021	242	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:50.164233+00	2026-10-10 09:49:50.164233+00	f
+1142	Drowning	drowning | t. j. newman	2023	244	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:50.254627+00	2026-10-10 09:49:50.254627+00	f
+1143	Butcher & Blackbird	butcher & blackbird | brynne weaver	2023	362	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:50.357682+00	2026-10-10 09:49:50.357682+00	f
+1144	Natural Beauty	natural beauty | ling ling huang	2023	235	Novel	Adult	English	Beige	Standalone	t	f	f	2026-10-10 09:49:50.466257+00	2026-10-10 09:49:50.466257+00	f
+1145	All Hallows	all hallows | christopher golden	2023	379	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:50.5747+00	2026-10-10 09:49:50.5747+00	f
+1146	Ankle Snatcher	ankle snatcher | grady hendrix	2023	29	Novella	Adult	English	Blue	Collection	f	f	f	2026-10-10 09:49:50.664258+00	2026-10-10 09:49:50.664258+00	f
+1147	The Resort	the resort | sarah goodwin	2023	384	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:50.789623+00	2026-10-10 09:49:50.789623+00	f
+1148	Melt for Us	melt for us | molly doyle	2021	128	Novella	Adult	English	Red	Series	f	f	f	2026-10-10 09:49:50.857939+00	2026-10-10 09:49:50.857939+00	f
+1149	The Mistletoe Motive	the mistletoe motive | chloe liese	2021	185	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:50.984261+00	2026-10-10 09:49:50.984261+00	f
+1150	Dead of Winter	dead of winter | darcy coates	2023	341	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:51.055827+00	2026-10-10 09:49:51.055827+00	f
+1151	Secret Santa	secret santa | andrew shaffer	2020	220	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:51.15707+00	2026-10-10 09:49:51.15707+00	f
+1152	Lovelight Farms	lovelight farms | b. k. borison	2021	332	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:51.256975+00	2026-10-10 09:49:51.256975+00	f
+1153	Everyone in My Family Has Killed Someone	everyone in my family has killed someone | benjamin stevenson	2022	367	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:51.37848+00	2026-10-10 09:49:51.37848+00	f
+1154	The Christmas Guest	the christmas guest | peter swanson	2023	102	Novella	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:51.460676+00	2026-10-10 09:49:51.460676+00	f
+1155	The Holiday Swap	the holiday swap | maggie knox	2021	330	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:51.593363+00	2026-10-10 09:49:51.593363+00	f
+1156	Nobody But Us	nobody but us | laure van rensburg	2022	310	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:51.754308+00	2026-10-10 09:49:51.754308+00	f
+1157	Sour Candy	sour candy | kealan patrick burke	2015	84	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:51.8574+00	2026-10-10 09:49:51.8574+00	f
+1158	Out There	out there | kate folk	2022	256	Short stories	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:51.964207+00	2026-10-10 09:49:51.964207+00	f
+1159	The Hike	the hike | lucy clarke	2023	375	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:51.980143+00	2026-10-10 09:49:51.980143+00	f
+1160	Below	below | laurel hightower	2022	124	Novella	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:52.058057+00	2026-10-10 09:49:52.058057+00	f
+1161	Cackle	cackle | rachel harrison	2021	291	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:52.183187+00	2026-10-10 09:49:52.183187+00	f
+1162	This is Where We Talk Things Out	this is where we talk things out | caitlin marceau	2022	86	Novella	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:52.266562+00	2026-10-10 09:49:52.266562+00	f
+1163	The Winter People	the winter people | jennifer mcmahon	2014	382	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:52.354725+00	2026-10-10 09:49:52.354725+00	f
+1164	The Drift	the drift | c. j. tudor	2023	390	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:52.367591+00	2026-10-10 09:49:52.367591+00	f
+1165	The Quiet Retreat	the quiet retreat | kiersten modglin	2022	240	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:52.456214+00	2026-10-10 09:49:52.456214+00	f
+1166	One of the Good Guys	one of the good guys | araminta hall	2024	288	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:52.573714+00	2026-10-10 09:49:52.573714+00	f
+1167	The Golden Spoon	the golden spoon | jessa maxwell	2023	375	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:52.686471+00	2026-10-10 09:49:52.686471+00	f
+1168	The Tusks of Extinction	the tusks of extinction | ray nayler	2024	113	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:52.853767+00	2026-10-10 09:49:52.853767+00	f
+1169	Yellowface	yellowface | r. f. kuang	2023	336	Novel	Adult	English	Yellow	Standalone	t	f	f	2026-10-10 09:49:52.961744+00	2026-10-10 09:49:52.961744+00	f
+1170	The Appeal	the appeal | janice hallett	2021	445	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:53.085244+00	2026-10-10 09:49:53.085244+00	f
+1171	No One Can Know	no one can know | kate alice marshall	2024	328	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:53.164954+00	2026-10-10 09:49:53.164954+00	f
+1172	The Reformatory	the reformatory | tanarive due	2023	571	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:49:53.357245+00	2026-10-10 09:49:53.357245+00	f
+1173	Out There Screaming	out there screaming | jordan peele	2023	366	Short stories	Adult	English	Gray	Standalone	t	f	f	2026-10-10 09:49:53.460483+00	2026-10-10 09:49:53.460483+00	f
+1174	Icebreaker	icebreaker | hannah grace	2022	435	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:49:53.584593+00	2026-10-10 09:49:53.584593+00	f
+1175	Killing Sarai	killing sarai | j. a. redmerski	2013	309	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:53.666919+00	2026-10-10 09:49:53.666919+00	f
+1176	This Wretched Valley	this wretched valley | jenny kiefer	2024	276	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:53.855863+00	2026-10-10 09:49:53.855863+00	f
+1177	The Shuddering	the shuddering | ania ahlborn	2013	283	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:53.961437+00	2026-10-10 09:49:53.961437+00	f
+1178	Night's Edge	night's edge | liz kerin	2023	288	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:49:54.085543+00	2026-10-10 09:49:54.085543+00	f
+1179	First Lie Wins	first lie wins | ashley elston	2024	340	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:54.253034+00	2026-10-10 09:49:54.253034+00	f
+1180	The First Sister	the first sister | linden a. lewis	2020	342	Novel	Adult	English	Black	Series	t	t	f	2026-10-10 09:49:54.361125+00	2026-10-10 09:49:54.361125+00	f
+1181	The Last Housewife	the last housewife | ashley winstead	2022	382	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:54.456492+00	2026-10-10 09:49:54.456492+00	f
+1182	Bloom	bloom | delilah s. dawson	2023	162	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:54.561928+00	2026-10-10 09:49:54.561928+00	f
+1183	Act Your Age, Eve Brown	act your age, eve brown | talia hibbert	2021	375	Novel	Adult	English	Blue	Series	t	f	f	2026-10-10 09:49:54.654572+00	2026-10-10 09:49:54.654572+00	f
+1184	The Fury	the fury | alex michaelides	2024	250	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:49:54.665961+00	2026-10-10 09:49:54.665961+00	f
+1185	Among the Living	among the living | tim lebbon	2024	236	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:54.797904+00	2026-10-10 09:49:54.797904+00	f
+1186	The Only Good Indians	the only good indians | stephen graham jones	2020	349	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:49:54.850472+00	2026-10-10 09:49:54.850472+00	f
+1187	Keep Her Secret	keep her secret | mark edwards	2023	315	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:54.862408+00	2026-10-10 09:49:54.862408+00	f
+1188	Your Shadow Half Remains	your shadow half remains | sunny moraine	2024	134	Novella	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:49:54.9636+00	2026-10-10 09:49:54.9636+00	f
+1189	He Will Be My Ruin	he will be my ruin | k. a. tucker	2016	341	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:54.975438+00	2026-10-10 09:49:54.975438+00	f
+1190	Sleeping Giants	sleeping giants | sylvain neuvel	2016	376	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:55.1533+00	2026-10-10 09:49:55.1533+00	f
+1191	Kill For Me, Kill For You	kill for me, kill for you | steve cavanagh	2023	346	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:55.256068+00	2026-10-10 09:49:55.256068+00	f
+1192	Lease on Love	lease on love | falon ballard	2022	332	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:49:55.363977+00	2026-10-10 09:49:55.363977+00	f
+1193	Reviving Izabel	reviving izabel | j. a. redmerski	2013	283	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:55.459019+00	2026-10-10 09:49:55.459019+00	f
+1194	Vera Wong's Unsolicited Advice for Murderers	vera wong's unsolicited advice for murderers | jesse q. sutanto	2023	334	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:49:55.55977+00	2026-10-10 09:49:55.55977+00	f
+1195	You've Lost a Lot of Blood	you've lost a lot of blood | eric larocca	2022	236	Novella	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:49:55.655879+00	2026-10-10 09:49:55.655879+00	f
+1196	The Echo Wife	the echo wife | sarah gailey	2021	256	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:55.669168+00	2026-10-10 09:49:55.669168+00	f
+1197	Dear Laura	dear laura | gemma amor	2019	111	Novella	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:49:55.798366+00	2026-10-10 09:49:55.798366+00	f
+1198	Midnight on Beacon Street	midnight on beacon street | emily ruth verona	2024	194	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:55.876216+00	2026-10-10 09:49:55.876216+00	f
+1199	My Darling Daughter	my darling daughter | j. p. delaney	2022	385	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:55.958025+00	2026-10-10 09:49:55.958025+00	f
+1200	The Night She Disappeared	the night she disappeared | lisa jewell	2021	465	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:56.050527+00	2026-10-10 09:49:56.050527+00	f
+1201	Let Him In	let him in | william friend	2022	238	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:56.156871+00	2026-10-10 09:49:56.156871+00	f
+1202	The Fiancee Farce	the fiancee farce | alexandria bellefleur	2023	384	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:49:56.167961+00	2026-10-10 09:49:56.167961+00	f
+1203	Gone to See the River Man	gone to see the river man | kristopher triana	2020	165	Novella	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:56.287729+00	2026-10-10 09:49:56.287729+00	f
+1204	Harry Potter and the Philosopher's Stone	harry potter and the philosopher's stone | j.k. rowling	1997	332	Novel	Middle-grade	English	Green	Series	f	f	f	2026-10-10 09:49:56.455339+00	2026-10-10 09:49:56.455339+00	f
+1205	Murder Road	murder road | simone st. james	2024	341	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:56.470513+00	2026-10-10 09:49:56.470513+00	f
+1206	Harry Potter and the Chamber of Secrets	harry potter and the chamber of secrets | j.k. rowling	1998	270	Novel	Middle-grade	English	Red	Series	f	f	f	2026-10-10 09:49:56.557096+00	2026-10-10 09:49:56.557096+00	f
+1207	Harry Potter and the Prisoner of Azkaban	harry potter and the prisoner of azkaban | j.k. rowling	1999	345	Novel	Middle-grade	English	Pink	Series	f	f	f	2026-10-10 09:49:56.569662+00	2026-10-10 09:49:56.569662+00	f
+1208	Harry Potter and the Goblet of Fire	harry potter and the goblet of fire | j.k. rowling	2000	577	Novel	Young adult	English	Green	Series	f	f	f	2026-10-10 09:49:56.659209+00	2026-10-10 09:49:56.659209+00	f
+1209	Harry Potter and the Order of the Phoenix	harry potter and the order of the phoenix | j.k. rowling	2003	793	Novel	Young adult	English	Blue	Series	f	f	f	2026-10-10 09:49:56.753367+00	2026-10-10 09:49:56.753367+00	f
+1210	Harry Potter and the Half-Blood Prince	harry potter and the half-blood prince | j.k. rowling	2005	519	Novel	Young adult	English	Green	Series	f	f	f	2026-10-10 09:49:56.767825+00	2026-10-10 09:49:56.767825+00	f
+1211	Nightwatching	nightwatching | tracy sierra	2024	368	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:56.958839+00	2026-10-10 09:49:56.958839+00	f
+1212	Harry Potter and the Deathly Hallows	harry potter and the deathly hallows | j.k. rowling	2007	610	Novel	Young adult	English	Orange	Series	f	f	f	2026-10-10 09:49:57.055344+00	2026-10-10 09:49:57.055344+00	f
+1213	Everyone is Watching	everyone is watching | heather gudenkauf	2024	279	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:57.154123+00	2026-10-10 09:49:57.154123+00	f
+1214	The Last Devil to Die	the last devil to die | richard osman	2023	417	Novel	Adult	English	Purple	Series	f	f	f	2026-10-10 09:49:57.167214+00	2026-10-10 09:49:57.167214+00	f
+1215	Love on the Brain	love on the brain | ali hazelwood	2022	352	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:57.254306+00	2026-10-10 09:49:57.254306+00	f
+1216	The Island	the island | adrian mckinty	2022	370	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:57.355982+00	2026-10-10 09:49:57.355982+00	f
+1217	The Passengers	the passengers | john marrs	2019	404	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:57.36762+00	2026-10-10 09:49:57.36762+00	f
+1218	All Systems Red	all systems red | martha wells	2017	144	Novella	Adult	English	Gray	Series	f	t	f	2026-10-10 09:49:57.495053+00	2026-10-10 09:49:57.495053+00	f
+1219	Diavola	diavola | jennifer thorne	2024	305	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:49:57.664419+00	2026-10-10 09:49:57.664419+00	f
+1220	The Swan & the Jackal	the swan & the jackal | j. a. redmerski	2014	294	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:57.753989+00	2026-10-10 09:49:57.753989+00	f
+1221	The Good Daughter	the good daughter | karin slaughter	2017	500	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:57.76655+00	2026-10-10 09:49:57.76655+00	f
+1222	Knock Knock Open Wide	knock knock open wide | neil sharpson	2023	384	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:49:57.956405+00	2026-10-10 09:49:57.956405+00	f
+1223	Listen for the Lie	listen for the lie | amy tintera	2024	390	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:58.15056+00	2026-10-10 09:49:58.15056+00	f
+1224	When She Was Me	when she was me | marlee bush	2024	346	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:58.259344+00	2026-10-10 09:49:58.259344+00	f
+1225	Tools of Engagement	tools of engagement | tessa bailey	2020	356	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:49:58.354593+00	2026-10-10 09:49:58.354593+00	f
+1226	Just Like Mother	just like mother | anne heltzel	2022	320	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:58.46533+00	2026-10-10 09:49:58.46533+00	f
+1227	The House That Horror Built	the house that horror built | christina henry	2024	317	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:49:58.554862+00	2026-10-10 09:49:58.554862+00	f
+1228	The Return	the return | rachel harrison	2020	296	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:58.570023+00	2026-10-10 09:49:58.570023+00	f
+1229	The Honey-Don't List	the honey-don't list | christina lauren	2020	303	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:49:58.661292+00	2026-10-10 09:49:58.661292+00	f
+1230	One Perfect Couple	one perfect couple | ruth ware	2024	360	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:58.673117+00	2026-10-10 09:49:58.673117+00	f
+1231	They Were Here Before Us	they were here before us | eric larocca	2022	80	Novella	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:58.760048+00	2026-10-10 09:49:58.760048+00	f
+1232	Such Sharp Teeth	such sharp teeth | rachel harrison	2022	315	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:58.850538+00	2026-10-10 09:49:58.850538+00	f
+1233	Mr. Nobody	mr. nobody | catherine steadman	2020	344	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:49:58.8637+00	2026-10-10 09:49:58.8637+00	f
+1234	Middle of the Night	middle of the night | riley sager	2024	366	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:49:58.950512+00	2026-10-10 09:49:58.950512+00	f
+1235	Seeds of Iniquity	seeds of iniquity | j. a. redmerski	2014	247	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:58.964611+00	2026-10-10 09:49:58.964611+00	f
+1236	The Roughest Draft	the roughest draft | austin siegemund-broka; emily wibberley	2022	313	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:49:59.253594+00	2026-10-10 09:49:59.253594+00	f
+1237	First Born	first born | will dean	2022	358	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:49:59.268211+00	2026-10-10 09:49:59.268211+00	f
+1238	Book Lovers	book lovers | emily henry	2022	373	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:59.357647+00	2026-10-10 09:49:59.357647+00	f
+1239	Stranded	stranded | sarah goodwin	2021	390	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:59.456834+00	2026-10-10 09:49:59.456834+00	f
+1240	Good Girl Complex	good girl complex | elle kennedy	2022	355	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:49:59.608753+00	2026-10-10 09:49:59.608753+00	f
+1241	Something Wilder	something wilder | christina lauren	2022	361	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:49:59.656826+00	2026-10-10 09:49:59.656826+00	f
+1242	Unbury Carol	unbury carol | josh malerman	2018	362	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:59.67105+00	2026-10-10 09:49:59.67105+00	f
+1243	How to Make a Horror Movie and Survive	how to make a horror movie and survive | craig dilouie	2024	430	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:49:59.855058+00	2026-10-10 09:49:59.855058+00	f
+1244	The Black Wolf	the black wolf | j. a. redmerski	2015	280	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:49:59.867247+00	2026-10-10 09:49:59.867247+00	f
+1245	Dear Child	dear child | romy hausmann	2019	326	Novel	Adult	German	White	Standalone	f	f	f	2026-10-10 09:50:00.057729+00	2026-10-10 09:50:00.057729+00	f
+1246	Flawless	flawless | elsie silver	2022	397	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:00.16322+00	2026-10-10 09:50:00.16322+00	f
+1247	Leave the World Behind	leave the world behind | rumaan alam	2020	268	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.281245+00	2026-10-10 09:50:00.281245+00	f
+1248	The Nanny	the nanny | lana ferguson	2023	403	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.457268+00	2026-10-10 09:50:00.457268+00	f
+1249	The Chamber	the chamber | will dean	2024	303	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.471898+00	2026-10-10 09:50:00.471898+00	f
+1250	Incidents Around the House	incidents around the house | josh malerman	2024	298	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.560812+00	2026-10-10 09:50:00.560812+00	f
+1251	Remnant Population	remnant population | elizabeth moon	1996	360	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.750587+00	2026-10-10 09:50:00.750587+00	f
+1252	Ladykiller	ladykiller | katherine wood	2024	382	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:00.854063+00	2026-10-10 09:50:00.854063+00	f
+1253	Attached at the Hip	attached at the hip | christine riccio	2024	419	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:00.9607+00	2026-10-10 09:50:00.9607+00	f
+1254	Bury Your Gays	bury your gays | chuck tingle	2024	318	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:01.058853+00	2026-10-10 09:50:01.058853+00	f
+1255	The Laws of the Skies	the laws of the skies | gregoire curtois	2016	118	Novella	Adult	French	Green	Standalone	f	f	f	2026-10-10 09:50:01.179067+00	2026-10-10 09:50:01.179067+00	f
+1256	The Haar	the haar | david sodergren	2022	206	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:01.283259+00	2026-10-10 09:50:01.283259+00	f
+1257	Such Pretty Flowers	such pretty flowers | k. l. cerra	2023	286	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:01.45547+00	2026-10-10 09:50:01.45547+00	f
+1258	The Pumpkin Spice Café	the pumpkin spice café | laurie gilmore	2023	286	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:01.558809+00	2026-10-10 09:50:01.558809+00	f
+1259	Wrong Place, Wrong Time	wrong place, wrong time | gillian mcallister	2022	312	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:01.677999+00	2026-10-10 09:50:01.677999+00	f
+1260	Episode Thirteen	episode thirteen | craig dilouie	2023	433	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:01.757687+00	2026-10-10 09:50:01.757687+00	f
+1261	Nestlings	nestlings | nat cassidy	2023	367	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:50:01.88612+00	2026-10-10 09:50:01.88612+00	f
+1262	Behind the Hands That Kill	behind the hands that kill | j. a. redmerski	2016	220	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:01.956104+00	2026-10-10 09:50:01.956104+00	f
+1263	Our Kind of Cruelty	our kind of cruelty | araminta hall	2018	345	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:01.968806+00	2026-10-10 09:50:01.968806+00	f
+1264	1922	1922 | stephen king	2010	154	Novella	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:02.057473+00	2026-10-10 09:50:02.057473+00	f
+1265	Leather & Lark	leather & lark | brynne weaver	2024	390	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:50:02.153216+00	2026-10-10 09:50:02.153216+00	f
+1266	Home Is Where the Bodies Are	home is where the bodies are | jeneva rose	2024	266	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:02.258314+00	2026-10-10 09:50:02.258314+00	f
+1267	We Used To Live Here	we used to live here | marcus kliewer	2024	264	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:02.361292+00	2026-10-10 09:50:02.361292+00	f
+1268	Annie Bot	annie bot | sierra greer	2024	252	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:02.479885+00	2026-10-10 09:50:02.479885+00	f
+1269	Not in Love	not in love | ali hazelwood	2024	379	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:02.555711+00	2026-10-10 09:50:02.555711+00	f
+1270	The Eyes Are the Best Part	the eyes are the best part | monika kim	2024	283	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:02.756566+00	2026-10-10 09:50:02.756566+00	f
+1271	Bride	bride | ali hazelwood	2024	396	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:02.772955+00	2026-10-10 09:50:02.772955+00	f
+1272	The Night Guest	the night guest | hildur knutsdottir	2021	197	Novella	Adult	Icelandic	Pink	Standalone	f	f	f	2026-10-10 09:50:02.960872+00	2026-10-10 09:50:02.960872+00	f
+1273	Worst Case Scenario	worst case scenario | t. j. newman	2024	307	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:03.058467+00	2026-10-10 09:50:03.058467+00	f
+1274	The Launch Party	the launch party | lauren a. forry	2023	368	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:03.183208+00	2026-10-10 09:50:03.183208+00	f
+1275	You Better Watch Out	you better watch out | darren wearmouth; james s. murray	2024	201	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:03.45911+00	2026-10-10 09:50:03.45911+00	f
+1276	We Solve Murders	we solve murders | richard osman	2024	380	Novel	Adult	English	Beige	Series	f	f	f	2026-10-10 09:50:03.553299+00	2026-10-10 09:50:03.553299+00	f
+1277	Cruel Winter With You	cruel winter with you | ali hazelwood	2024	60	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:03.574096+00	2026-10-10 09:50:03.574096+00	f
+1278	Dearest	dearest | jacquie walters	2024	292	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:03.76567+00	2026-10-10 09:50:03.76567+00	f
+1279	Make the Season Bright	make the season bright | ashley herring blake	2024	341	Novel	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:50:03.956928+00	2026-10-10 09:50:03.956928+00	f
+1280	The Most Wonderful Crime of the Year	the most wonderful crime of the year | ally carter	2024	390	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:04.071229+00	2026-10-10 09:50:04.071229+00	f
+1281	All I Want Is You	all i want is you | falon ballard	2024	234	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:04.161908+00	2026-10-10 09:50:04.161908+00	f
+1282	Merriment and Mayhem	merriment and mayhem | alexandria bellefleur	2024	46	Novella	Adult	English	Yellow	Series	f	t	f	2026-10-10 09:50:04.258918+00	2026-10-10 09:50:04.258918+00	f
+1283	Beg, Borrow, or Steal	beg, borrow, or steal | sarah adams	2025	343	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:04.356281+00	2026-10-10 09:50:04.356281+00	f
+1284	Jawbone	jawbone | monica ojeda	2018	254	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:04.556138+00	2026-10-10 09:50:04.556138+00	f
+1285	The Book of Accidents	the book of accidents | chuck wendig	2021	525	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:04.683268+00	2026-10-10 09:50:04.683268+00	f
+1286	Voices in the Snow	voices in the snow | darcy coates	2019	278	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:04.761139+00	2026-10-10 09:50:04.761139+00	f
+1287	The Gathering	the gathering | c. j. tudor	2024	372	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:04.860605+00	2026-10-10 09:50:04.860605+00	f
+1288	Rest Stop	rest stop | nat cassidy	2024	110	Novella	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:04.953949+00	2026-10-10 09:50:04.953949+00	f
+1289	The Nesting	the nesting | c. j. cooke	2020	394	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:05.469241+00	2026-10-10 09:50:05.469241+00	f
+1290	Lessons in Chemistry	lessons in chemistry | bonnie garmus	2022	409	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:05.630514+00	2026-10-10 09:50:05.630514+00	f
+1291	All the Colors of the Dark	all the colors of the dark | chris whitaker	2024	593	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:05.753195+00	2026-10-10 09:50:05.753195+00	f
+1292	The Baby Dragon Café	the baby dragon café | aamna qureshi	2025	271	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:05.859997+00	2026-10-10 09:50:05.859997+00	f
+1293	Lights Out	lights out | navessa allen	2024	414	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:05.984526+00	2026-10-10 09:50:05.984526+00	f
+1294	Wake Up and Open Your Eyes	wake up and open your eyes | clay mcleod chapman	2025	396	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:06.060297+00	2026-10-10 09:50:06.060297+00	f
+1295	Someone You Can Build a Nest In	someone you can build a nest in | john wiswell	2024	320	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:50:06.256162+00	2026-10-10 09:50:06.256162+00	f
+1296	Josh and Hazel's Guide to Not Dating	josh and hazel's guide to not dating | christina lauren	2018	306	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:06.356317+00	2026-10-10 09:50:06.356317+00	f
+1297	The Lodge	the lodge | kayla olson	2025	304	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:06.493781+00	2026-10-10 09:50:06.493781+00	f
+1298	Quicksilver	quicksilver | callie hart	2024	632	Novel	Adult	English	Gray	Series	f	f	f	2026-10-10 09:50:06.657935+00	2026-10-10 09:50:06.657935+00	f
+1299	The Favorites	the favorites | layne fargo	2025	466	Novel	Adult	English	Beige	Standalone	t	f	f	2026-10-10 09:50:06.755888+00	2026-10-10 09:50:06.755888+00	f
+1300	Cross My Heart	cross my heart | megan collins	2025	306	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:06.867655+00	2026-10-10 09:50:06.867655+00	f
+1301	The Night Swim	the night swim | megan goldin	2020	341	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:07.064717+00	2026-10-10 09:50:07.064717+00	f
+1302	Witchcraft for Wayward Girls	witchcraft for wayward girls | grady hendrix	2025	433	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:07.158278+00	2026-10-10 09:50:07.158278+00	f
+1303	The Final Scene	the final scene | steph nelson	2024	229	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:07.287835+00	2026-10-10 09:50:07.287835+00	f
+1304	Beautiful Ugly	beautiful ugly | alice feeney	2025	290	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:07.366163+00	2026-10-10 09:50:07.366163+00	f
+1305	Deep End	deep end | ali hazelwood	2025	436	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:07.458755+00	2026-10-10 09:50:07.458755+00	f
+1306	Scythe & Sparrow	scythe & sparrow | brynne weaver	2025	416	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:07.564893+00	2026-10-10 09:50:07.564893+00	f
+1307	Spiders in the Grove	spiders in the grove | j. a. redmerski	2018	283	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:07.656698+00	2026-10-10 09:50:07.656698+00	f
+1308	You Are Fatally Invited	you are fatally invited | ande pliego	2025	374	Novel	Adult	English	Orange	Standalone	t	t	f	2026-10-10 09:50:07.859661+00	2026-10-10 09:50:07.859661+00	f
+1309	The Hunger Games	the hunger games | suzanne collins	2008	454	Novel	Young adult	English	Black	Series	f	f	f	2026-10-10 09:50:08.06472+00	2026-10-10 09:50:08.06472+00	f
+1310	Catching Fire	catching fire | suzanne collins	2009	472	Novel	Young adult	English	Orange	Series	f	f	f	2026-10-10 09:50:08.162261+00	2026-10-10 09:50:08.162261+00	f
+1311	Mockingjay	mockingjay | suzanne collins	2010	455	Novel	Young adult	English	Blue	Series	f	f	f	2026-10-10 09:50:08.263146+00	2026-10-10 09:50:08.263146+00	f
+1312	Happenstance	happenstance | tessa bailey	2022	269	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:08.351998+00	2026-10-10 09:50:08.351998+00	f
+1313	Motherthing	motherthing | ainslie hogarth	2022	250	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:08.563326+00	2026-10-10 09:50:08.563326+00	f
+1314	Close Your Eyes and Count to 10	close your eyes and count to 10 | lisa unger	2025	366	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:08.755371+00	2026-10-10 09:50:08.755371+00	f
+1315	The Ballad of Songbirds and Snakes	the ballad of songbirds and snakes | suzanne collins	2020	517	Novel	Young adult	English	Brown	Series	f	f	f	2026-10-10 09:50:08.772634+00	2026-10-10 09:50:08.772634+00	f
+1316	Sunrise on the Reaping	sunrise on the reaping | suzanne collins	2025	348	Novel	Young adult	English	Purple	Series	f	f	f	2026-10-10 09:50:08.865873+00	2026-10-10 09:50:08.865873+00	f
+1317	Listen to Your Sister	listen to your sister | neena viel	2025	316	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:09.067215+00	2026-10-10 09:50:09.067215+00	f
+1318	Not in My Book	not in my book | katie holt	2024	368	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:09.256755+00	2026-10-10 09:50:09.256755+00	f
+1319	The Book Thief	the book thief | markus zusak	2005	492	Novel	Young adult	English	Brown	Standalone	f	f	f	2026-10-10 09:50:09.455716+00	2026-10-10 09:50:09.455716+00	f
+1320	The Answer Is No	the answer is no | fredrik backman	2024	55	Novella	Adult	Swedish	Orange	Standalone	f	f	f	2026-10-10 09:50:09.471506+00	2026-10-10 09:50:09.471506+00	f
+1321	The Fireman	the fireman | joe hill	2016	762	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:09.564875+00	2026-10-10 09:50:09.564875+00	f
+1322	You Killed Me First	you killed me first | john marrs	2025	299	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:09.660182+00	2026-10-10 09:50:09.660182+00	f
+1323	A Witch's Guide to Fake Dating a Demon	a witch's guide to fake dating a demon | sarah hawley	2023	363	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:09.85884+00	2026-10-10 09:50:09.85884+00	f
+1324	The Lamb	the lamb | lucy rose	2025	245	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:09.984237+00	2026-10-10 09:50:09.984237+00	f
+1325	Tell Me What You Did	tell me what you did | carter wilson	2025	365	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:10.162484+00	2026-10-10 09:50:10.162484+00	f
+1326	Foe	foe | iain reid	2018	260	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:10.25703+00	2026-10-10 09:50:10.25703+00	f
+1327	A Serial Killer's Guide to Marriage	a serial killer's guide to marriage | asia mackay	2025	332	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:10.45399+00	2026-10-10 09:50:10.45399+00	f
+1328	An Academy for Liars	an academy for liars | alexis henderson	2024	450	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:10.562402+00	2026-10-10 09:50:10.562402+00	f
+1329	Late Bloomer	late bloomer | mazey eddings	2024	304	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:10.757211+00	2026-10-10 09:50:10.757211+00	f
+1330	The Invited	the invited | jennifer mcmahon	2019	399	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:10.772038+00	2026-10-10 09:50:10.772038+00	f
+1331	Them	them | mique watson	2023	171	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:10.858141+00	2026-10-10 09:50:10.858141+00	f
+1332	The Doctor	the doctor | nikki sloane	2018	229	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:11.054782+00	2026-10-10 09:50:11.054782+00	f
+1333	The Good Son	the good son | you-jeong jeong	2016	242	Novel	Adult	Korean	Black	Standalone	t	f	f	2026-10-10 09:50:11.171012+00	2026-10-10 09:50:11.171012+00	f
+1334	Unhinged	unhinged | onley james	2021	239	Novel	Adult	English	Pink	Series	f	t	f	2026-10-10 09:50:11.358811+00	2026-10-10 09:50:11.358811+00	f
+1335	Graveyard Shift	graveyard shift | m. l. rio	2024	108	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:11.453714+00	2026-10-10 09:50:11.453714+00	f
+1336	Do Me a Favor	do me a favor | cathy yardley	2024	289	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:11.470472+00	2026-10-10 09:50:11.470472+00	f
+1337	The Memory Ward	the memory ward | jon bassoff	2025	300	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:11.66387+00	2026-10-10 09:50:11.66387+00	f
+1338	Collide	collide | bal khabra	2023	371	Novel	Adult	English	Green	Series	t	f	f	2026-10-10 09:50:11.857454+00	2026-10-10 09:50:11.857454+00	f
+1339	The Amendment	the amendment | kiersten modglin	2022	214	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:11.87246+00	2026-10-10 09:50:11.87246+00	f
+1340	Julie Chan Is Dead	julie chan is dead | liann zhang	2025	324	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:12.059854+00	2026-10-10 09:50:12.059854+00	f
+1341	The Atonement	the atonement | kiersten modglin	2022	215	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:12.154437+00	2026-10-10 09:50:12.154437+00	f
+1342	A Good Girl's Guide to Murder	a good girl's guide to murder | holly jackson	2019	433	Novel	Young adult	English	White	Series	t	f	f	2026-10-10 09:50:12.264626+00	2026-10-10 09:50:12.264626+00	f
+1343	Bat Eater and Other Names for Cora Zeng	bat eater and other names for cora zeng | kylie lee baker	2025	304	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:12.458535+00	2026-10-10 09:50:12.458535+00	f
+1344	Confessions on the 7:45	confessions on the 7:45 | lisa unger	2019	379	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:12.554777+00	2026-10-10 09:50:12.554777+00	f
+1345	Passion Project	passion project | london sperry	2025	319	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:12.669601+00	2026-10-10 09:50:12.669601+00	f
+1346	When the Wolf Comes Home	when the wolf comes home | nat cassidy	2025	371	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:12.761308+00	2026-10-10 09:50:12.761308+00	f
+1347	Eat the Ones You Love	eat the ones you love | sarah maria griffin	2025	241	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:13.008739+00	2026-10-10 09:50:13.008739+00	f
+1348	Anywhere You Go	anywhere you go | bridget morrisey	2025	320	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:13.1849+00	2026-10-10 09:50:13.1849+00	f
+1349	Small Game	small game | blair braverman	2022	288	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:13.366196+00	2026-10-10 09:50:13.366196+00	f
+1350	Blood on Her Tongue	blood on her tongue | johanna van veen	2025	283	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:13.565031+00	2026-10-10 09:50:13.565031+00	f
+1351	The Three Lives of Cate Kay	the three lives of cate kay | kate fagan	2025	283	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:13.760193+00	2026-10-10 09:50:13.760193+00	f
+1352	The Man Made of Smoke	the man made of smoke | alex north	2025	301	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:13.856027+00	2026-10-10 09:50:13.856027+00	f
+1353	Record of a Spaceborn Few	record of a spaceborn few | becky chambers	2018	358	Novel	Adult	English	Blue	Series	t	t	f	2026-10-10 09:50:13.869661+00	2026-10-10 09:50:13.869661+00	f
+1354	On the Same Page	on the same page | haley cass	2023	505	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:14.063018+00	2026-10-10 09:50:14.063018+00	f
+1355	Queen of Teeth	queen of teeth | hailey piper	2021	198	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:14.25087+00	2026-10-10 09:50:14.25087+00	f
+1356	To Be Devoured	to be devoured | sara tantlinger	2019	90	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:14.463257+00	2026-10-10 09:50:14.463257+00	f
+1357	The Influencers	the influencers | anna-marie mclemore	2025	381	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:50:14.557931+00	2026-10-10 09:50:14.557931+00	f
+1358	The True Love Experiment	the true love experiment | christina lauren	2023	401	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:14.654458+00	2026-10-10 09:50:14.654458+00	f
+1359	I Might Be In Trouble	i might be in trouble | daniel aleman	2024	360	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:50:14.862889+00	2026-10-10 09:50:14.862889+00	f
+1360	The Galaxy, and the Ground Within	the galaxy, and the ground within | becky chambers	2021	324	Novel	Adult	English	Purple	Series	t	t	f	2026-10-10 09:50:14.958241+00	2026-10-10 09:50:14.958241+00	f
+1361	Delilah Green Doesn't Care	delilah green doesn't care | ashley herring blake	2022	371	Novel	Adult	English	Purple	Series	f	t	f	2026-10-10 09:50:14.981936+00	2026-10-10 09:50:14.981936+00	f
+1362	My Best Friend's Honeymoon	my best friend's honeymoon | meryl wilsner	2025	235	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:15.255193+00	2026-10-10 09:50:15.255193+00	f
+1363	Atmosphere	atmosphere | taylor jenkins reid	2025	332	Novel	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:15.275784+00	2026-10-10 09:50:15.275784+00	f
+1364	Immaculate Conception	immaculate conception | ling ling huang	2025	244	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:15.366038+00	2026-10-10 09:50:15.366038+00	f
+1365	Caught Up	caught up | navessa allen	2025	332	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:15.461037+00	2026-10-10 09:50:15.461037+00	f
+1366	The Girls I've Been	the girls i've been | tess sharpe	2021	332	Novel	Young adult	English	Red	Series	f	t	f	2026-10-10 09:50:15.663271+00	2026-10-10 09:50:15.663271+00	f
+1367	The Hacienda	the hacienda | isabel cañas	2022	331	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:50:15.858212+00	2026-10-10 09:50:15.858212+00	f
+1368	The Ghostwriter	the ghostwriter | julie clark	2025	328	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:15.954481+00	2026-10-10 09:50:15.954481+00	f
+1369	Insomnia	insomnia | sarah pinborough	2022	340	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:15.968477+00	2026-10-10 09:50:15.968477+00	f
+1370	Happy Place	happy place | emily henry	2023	385	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:16.05882+00	2026-10-10 09:50:16.05882+00	f
+1371	The Poppy War	the poppy war | r. f. kuang	2018	527	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:50:16.151187+00	2026-10-10 09:50:16.151187+00	f
+1372	With a Vengeance	with a vengeance | riley sager	2025	311	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:16.250539+00	2026-10-10 09:50:16.250539+00	f
+1373	Out on a Limb	out on a limb | hannah bonam-young	2023	348	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:50:16.457293+00	2026-10-10 09:50:16.457293+00	f
+1374	The Humans	the humans | matt haig	2013	291	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:16.654735+00	2026-10-10 09:50:16.654735+00	f
+1375	Sky Daddy	sky daddy | kate folk	2025	285	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:16.750509+00	2026-10-10 09:50:16.750509+00	f
+1376	First-Time Caller	first-time caller | b. k. borison	2025	391	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:16.766634+00	2026-10-10 09:50:16.766634+00	f
+1377	At Home With the Horrors	at home with the horrors | sammy scott	2022	462	Short stories	Adult	English	Blue	Collection	f	f	f	2026-10-10 09:50:16.859662+00	2026-10-10 09:50:16.859662+00	f
+1378	Saltwater	saltwater | katy hays	2025	355	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:17.070664+00	2026-10-10 09:50:17.070664+00	f
+1379	Theme Music	theme music | t. marie vandelly	2019	383	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:17.254307+00	2026-10-10 09:50:17.254307+00	f
+1380	The Private Jet	the private jet | sarah goodwin	2025	287	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:17.274559+00	2026-10-10 09:50:17.274559+00	f
+1381	The Paradise Problem	the paradise problem | christina lauren	2024	336	Novel	Adult	English	Yellow	Standalone	t	f	f	2026-10-10 09:50:17.36211+00	2026-10-10 09:50:17.36211+00	f
+1382	Strange Pictures	strange pictures | uketsu	2022	180	Novella	Adult	Japanese	Green	Standalone	t	f	f	2026-10-10 09:50:17.578046+00	2026-10-10 09:50:17.578046+00	f
+1383	Unhinged	unhinged | steph macca	2024	186	Novella	Adult	English	Gray	Series	f	f	f	2026-10-10 09:50:17.875049+00	2026-10-10 09:50:17.875049+00	f
+1384	I Can Fix Her	i can fix her | rae wilde	2025	69	Novella	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:18.060644+00	2026-10-10 09:50:18.060644+00	f
+1385	Wearing the Lion	wearing the lion | john wiswell	2025	400	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:50:18.154961+00	2026-10-10 09:50:18.154961+00	f
+1386	Problematic Summer Romance	problematic summer romance | ali hazelwood	2025	397	Novel	Adult	English	Teal	Series	f	f	f	2026-10-10 09:50:18.169116+00	2026-10-10 09:50:18.169116+00	f
+1387	Sunburned	sunburned | katherine wood	2025	335	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:18.259345+00	2026-10-10 09:50:18.259345+00	f
+1388	Playing Nice	playing nice | j. p. delaney	2020	422	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:18.354864+00	2026-10-10 09:50:18.354864+00	f
+1389	Done and Dusted	done and dusted | lyla sage	2023	321	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:18.514136+00	2026-10-10 09:50:18.514136+00	f
+1390	Love & Other Killers	love & other killers | brynne weaver	2025	61	Novella	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:18.56243+00	2026-10-10 09:50:18.56243+00	f
+1391	Swift and Saddled	swift and saddled | lyla sage	2024	285	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:18.660905+00	2026-10-10 09:50:18.660905+00	f
+1392	How to Survive a Horror Story	how to survive a horror story | mallory arnold	2025	353	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:18.872721+00	2026-10-10 09:50:18.872721+00	f
+1393	Lost and Lassoed	lost and lassoed | lyla sage	2024	368	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:18.974897+00	2026-10-10 09:50:18.974897+00	f
+1394	Tender Is the Flesh	tender is the flesh | agustina bazterrica	2017	164	Novella	Adult	Spanish	Black	Standalone	f	f	f	2026-10-10 09:50:19.25765+00	2026-10-10 09:50:19.25765+00	f
+1395	One in Four	one in four | lucinda berry	2025	245	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:19.35949+00	2026-10-10 09:50:19.35949+00	f
+1396	Wild and Wrangled	wild and wrangled | lyla sage	2025	368	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:19.465709+00	2026-10-10 09:50:19.465709+00	f
+1397	Arcana Academy	arcana academy | elise kova	2025	544	Novel	Adult	English	Brown	Series	f	f	f	2026-10-10 09:50:19.669082+00	2026-10-10 09:50:19.669082+00	f
+1398	The Wedding People	the wedding people | alison espach	2024	381	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:50:19.856947+00	2026-10-10 09:50:19.856947+00	f
+1399	The House of My Mother	the house of my mother | shari franke	2025	256	Memoir	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:19.973016+00	2026-10-10 09:50:19.973016+00	f
+1400	The Cinnamon Bun Book Store	the cinnamon bun book store | laurie gilmore	2024	347	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:20.061443+00	2026-10-10 09:50:20.061443+00	f
+1401	We Live Here Now	we live here now | sarah pinborough	2025	283	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:20.159953+00	2026-10-10 09:50:20.159953+00	f
+1402	Dire Bound	dire bound | sable sorensen	2025	619	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:20.359584+00	2026-10-10 09:50:20.359584+00	f
+1403	There Are No Saints	there are no saints | sophie lark	2021	293	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:20.554673+00	2026-10-10 09:50:20.554673+00	f
+1404	The Bewitching	the bewitching | silvia moreno-garcia	2025	383	Novel	Adult	English	Green	Standalone	t	f	f	2026-10-10 09:50:20.656147+00	2026-10-10 09:50:20.656147+00	f
+1405	The Night Sister	the night sister | jennifer mcmahon	2015	369	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:20.754168+00	2026-10-10 09:50:20.754168+00	f
+1406	People Watching	people watching | hannah bonam-young	2025	328	Novel	Adult	English	Beige	Standalone	f	f	f	2026-10-10 09:50:20.854815+00	2026-10-10 09:50:20.854815+00	f
+1407	Automatic Noodle	automatic noodle | annalee newitz	2025	128	Novella	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:50:21.062162+00	2026-10-10 09:50:21.062162+00	f
+1408	Gray After Dark	gray after dark | noelle w. ihli	2024	289	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:21.255188+00	2026-10-10 09:50:21.255188+00	f
+1409	The Therapist	the therapist | helene flood	2019	301	Novel	Adult	Norwegian	Gray	Standalone	f	f	f	2026-10-10 09:50:21.366969+00	2026-10-10 09:50:21.366969+00	f
+1410	13 Months Haunted	13 months haunted | jimmy juliano	2025	372	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:21.46212+00	2026-10-10 09:50:21.46212+00	f
+1411	This Skin Was Once Mine and Other Disturbances	this skin was once mine and other disturbances | eric larocca	2024	186	Short stories	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:50:21.558349+00	2026-10-10 09:50:21.558349+00	f
+1412	House of Leaves	house of leaves | mark z. danielewski	2000	709	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:21.760861+00	2026-10-10 09:50:21.760861+00	f
+1413	Mate	mate | ali hazelwood	2025	446	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:21.86161+00	2026-10-10 09:50:21.86161+00	f
+1414	The Burning Girls	the burning girls | c. j. tudor	2021	384	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:21.95816+00	2026-10-10 09:50:21.95816+00	f
+1415	Tourist Season	tourist season | brynne weaver	2025	428	Novel	Adult	English	Purple	Series	f	f	f	2026-10-10 09:50:22.061341+00	2026-10-10 09:50:22.061341+00	f
+1416	Night Shoot	night shoot | david sodergren	2019	209	Novella	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:22.159239+00	2026-10-10 09:50:22.159239+00	f
+1417	Guillotine	guillotine | delilah s. dawson	2024	163	Novella	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:22.256911+00	2026-10-10 09:50:22.256911+00	f
+1418	A Dowry of Blood	a dowry of blood | s. t. gibson	2021	292	Novel	Adult	English	Black	Series	f	t	f	2026-10-10 09:50:22.462596+00	2026-10-10 09:50:22.462596+00	f
+1419	The Intruder	the intruder | freida mcfadden	2025	256	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:22.660956+00	2026-10-10 09:50:22.660956+00	f
+1420	Silver Elite	silver elite | dani francis	2025	512	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:22.86195+00	2026-10-10 09:50:22.86195+00	f
+1421	Futility	futility | nuzo onoh	2025	271	Novel	Adult	English	Teal	Standalone	t	f	f	2026-10-10 09:50:23.064591+00	2026-10-10 09:50:23.064591+00	f
+1422	Matchmaking for Psychopaths	matchmaking for psychopaths | tasha coryell	2025	303	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:23.262212+00	2026-10-10 09:50:23.262212+00	f
+1423	The Crash	the crash | freida mcfadden	2025	285	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:23.361354+00	2026-10-10 09:50:23.361354+00	f
+1424	Katabasis	katabasis | r. f. kuang	2025	541	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:23.460068+00	2026-10-10 09:50:23.460068+00	f
+1425	What Hunger	what hunger | catherine dang	2025	237	Novel	Adult	English	Red	Standalone	t	f	f	2026-10-10 09:50:23.662793+00	2026-10-10 09:50:23.662793+00	f
+1426	Broken Country	broken country | clare leslie hall	2025	262	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:23.864263+00	2026-10-10 09:50:23.864263+00	f
+1427	Spiral	spiral | bal khabra	2025	338	Novel	Adult	English	Purple	Series	t	f	f	2026-10-10 09:50:23.966826+00	2026-10-10 09:50:23.966826+00	f
+1428	Breathe In, Bleed Out	breathe in, bleed out | brian mcauley	2025	259	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:24.253932+00	2026-10-10 09:50:24.253932+00	f
+1429	I Who Have Never Known Men	i who have never known men | jacqueline harpman	1995	188	Novel	Adult	French	Black	Standalone	f	f	f	2026-10-10 09:50:24.456539+00	2026-10-10 09:50:24.456539+00	f
+1430	The Tenant	the tenant | freida mcfadden	2025	368	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:24.55662+00	2026-10-10 09:50:24.55662+00	f
+1431	You Make It Feel Like Christmas	you make it feel like christmas | sophie sullivan	2025	303	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:24.761544+00	2026-10-10 09:50:24.761544+00	f
+1432	The Picture of Dorian Gray	the picture of dorian gray | oscar wilde	1891	203	Novel	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:24.965938+00	2026-10-10 09:50:24.965938+00	f
+1433	Alchemy of Secrets	alchemy of secrets | stephanie garber	2025	311	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:25.161202+00	2026-10-10 09:50:25.161202+00	f
+1434	Twisted Love	twisted love | ana huang	2021	343	Novel	Adult	English	Blue	Series	t	f	f	2026-10-10 09:50:25.362185+00	2026-10-10 09:50:25.362185+00	f
+1435	Set the Record Straight	set the record straight | hannah bonam-young	2022	169	Novella	Adult	English	White	Standalone	f	t	f	2026-10-10 09:50:25.460049+00	2026-10-10 09:50:25.460049+00	f
+1436	I'll Be Gone for Christmas	i'll be gone for christmas | georgia k. boone	2024	279	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:25.668893+00	2026-10-10 09:50:25.668893+00	f
+1437	Isola	isola | allegra goodman	2025	362	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:25.955244+00	2026-10-10 09:50:25.955244+00	f
+1438	Strange Sally Diamond	strange sally diamond | liz nugent	2023	374	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:26.158884+00	2026-10-10 09:50:26.158884+00	f
+1439	He Sees You When You're Sleeping	he sees you when you're sleeping | alta hensley	2024	270	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:26.369289+00	2026-10-10 09:50:26.369289+00	f
+1440	Victorian Psycho	victorian psycho | virginia feito	2025	149	Novella	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:26.569683+00	2026-10-10 09:50:26.569683+00	f
+1441	Booked for the Holidays	booked for the holidays | liz maverick	2024	147	Novella	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:26.781884+00	2026-10-10 09:50:26.781884+00	f
+1442	He Knows When You're Awake	he knows when you're awake | alta hensley	2025	298	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:26.866034+00	2026-10-10 09:50:26.866034+00	f
+1443	The Yacht	the yacht | sarah goodwin	2024	305	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:26.960004+00	2026-10-10 09:50:26.960004+00	f
+1444	Seduction Theory	seduction theory | emily adrian	2025	181	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:50:27.159218+00	2026-10-10 09:50:27.159218+00	f
+1445	Brimstone	brimstone | callie hart	2025	660	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:27.174636+00	2026-10-10 09:50:27.174636+00	f
+1446	Soul Searching	soul searching | lyla sage	2025	303	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:27.264916+00	2026-10-10 09:50:27.264916+00	f
+1447	Dating After the End of the World	dating after the end of the world | jeneva rose	2025	308	Novel	Adult	English	Purple	Series	f	f	f	2026-10-10 09:50:27.356646+00	2026-10-10 09:50:27.356646+00	f
+1448	Brother	brother | ania ahlborn	2015	319	Novel	Adult	English	Brown	Standalone	f	f	f	2026-10-10 09:50:27.45321+00	2026-10-10 09:50:27.45321+00	f
+1449	Whiteout	whiteout | r. s. burnett	2025	256	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:27.658342+00	2026-10-10 09:50:27.658342+00	f
+1450	So Thirsty	so thirsty | rachel harrison	2024	315	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:27.757464+00	2026-10-10 09:50:27.757464+00	f
+1451	At Dark, I Become Loathsome	at dark, i become loathsome | eric larocca	2025	174	Novel	Adult	English	Red	Standalone	f	t	f	2026-10-10 09:50:27.859118+00	2026-10-10 09:50:27.859118+00	f
+1452	House of Hunger	house of hunger | alexis henderson	2022	288	Novel	Adult	English	Green	Standalone	t	t	f	2026-10-10 09:50:27.961632+00	2026-10-10 09:50:27.961632+00	f
+1453	In Your Dreams	in your dreams | sarah adams	2025	330	Novel	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:28.062948+00	2026-10-10 09:50:28.062948+00	f
+1454	Beautiful Venom	beautiful venom | rina kent	2025	484	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:28.271188+00	2026-10-10 09:50:28.271188+00	f
+1455	We Who Will Die	we who will die | stacia stark	2025	500	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:28.478075+00	2026-10-10 09:50:28.478075+00	f
+1456	Behind the Net	behind the net | stephanie archer	2023	404	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:28.662333+00	2026-10-10 09:50:28.662333+00	f
+1457	Full Speed to a Crash Landing	full speed to a crash landing | beth revis	2024	187	Novella	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:28.862741+00	2026-10-10 09:50:28.862741+00	f
+1458	Woman Down	woman down | colleen hoover	2026	299	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:28.960899+00	2026-10-10 09:50:28.960899+00	f
+1459	Ninth House	ninth house | leigh bardugo	2019	450	Novel	Adult	English	Black	Series	t	f	f	2026-10-10 09:50:29.164832+00	2026-10-10 09:50:29.164832+00	f
+1460	Ask for Andrea	ask for andrea | noelle w. ihli	2022	267	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:29.264472+00	2026-10-10 09:50:29.264472+00	f
+1461	The Housemaid	the housemaid | freida mcfadden	2022	328	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:29.361265+00	2026-10-10 09:50:29.361265+00	f
+1462	Spread Me	spread me | sarah gailey	2025	146	Novella	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:29.461042+00	2026-10-10 09:50:29.461042+00	f
+1463	Sweet Venom	sweet venom | rina kent	2025	441	Novel	Adult	English	White	Series	f	f	f	2026-10-10 09:50:29.559358+00	2026-10-10 09:50:29.559358+00	f
+1464	My Husband's Wife	my husband's wife | alice feeney	2026	289	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:29.66083+00	2026-10-10 09:50:29.66083+00	f
+1465	Twisted Games	twisted games | ana huang	2021	438	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:50:29.761496+00	2026-10-10 09:50:29.761496+00	f
+1466	Say You'll Remember Me	say you'll remember me | abby jimenez	2025	353	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:29.969037+00	2026-10-10 09:50:29.969037+00	f
+1467	Escape!	escape! | stephen fischbach	2026	424	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:30.163933+00	2026-10-10 09:50:30.163933+00	f
+1468	Twisted Hate	twisted hate | ana huang	2022	504	Novel	Adult	English	Pink	Series	t	f	f	2026-10-10 09:50:30.262968+00	2026-10-10 09:50:30.262968+00	f
+1469	Half His Age	half his age | jennette mccurdy	2026	238	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:30.472153+00	2026-10-10 09:50:30.472153+00	f
+1470	Love and Other Brain Experiments	love and other brain experiments | hannah brohm	2026	352	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:30.660614+00	2026-10-10 09:50:30.660614+00	f
+1471	No Body No Crime	no body no crime | tess sharpe	2025	292	Novel	Adult	English	Beige	Standalone	f	t	f	2026-10-10 09:50:30.761986+00	2026-10-10 09:50:30.761986+00	f
+1472	When in Rome	when in rome | sarah adams	2022	306	Novel	Adult	English	Orange	Series	f	f	f	2026-10-10 09:50:30.857714+00	2026-10-10 09:50:30.857714+00	f
+1473	Dear Debbie	dear debbie | freida mcfadden	2026	315	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:30.954621+00	2026-10-10 09:50:30.954621+00	f
+1474	Twisted Lies	twisted lies | ana huang	2022	558	Novel	Adult	English	Green	Series	t	f	f	2026-10-10 09:50:31.055115+00	2026-10-10 09:50:31.055115+00	f
+1475	Girl Dinner	girl dinner | olivie blake	2025	323	Novel	Adult	English	Teal	Standalone	t	f	f	2026-10-10 09:50:31.268308+00	2026-10-10 09:50:31.268308+00	f
+1476	Adrift	adrift | will dean	2026	300	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:31.371272+00	2026-10-10 09:50:31.371272+00	f
+1477	We Met Like This	we met like this | kasie west	2025	312	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:31.660156+00	2026-10-10 09:50:31.660156+00	f
+1478	There Is No Devil	there is no devil | sophie lark	2021	281	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:31.764894+00	2026-10-10 09:50:31.764894+00	f
+1479	The Devotion of Suspect X	the devotion of suspect x | keigo higashino	2005	275	Novel	Adult	Japanese	Black	Standalone	t	f	f	2026-10-10 09:50:31.967918+00	2026-10-10 09:50:31.967918+00	f
+1480	Game On	game on | navessa allen	2026	370	Novel	Adult	English	Green	Series	f	t	f	2026-10-10 09:50:32.068591+00	2026-10-10 09:50:32.068591+00	f
+1481	Daphne	daphne | josh malerman	2022	254	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:32.16458+00	2026-10-10 09:50:32.16458+00	f
+1482	Best Offer Wins	best offer wins | marisa kashino	2025	257	Novel	Adult	English	Red	Standalone	t	f	f	2026-10-10 09:50:32.457028+00	2026-10-10 09:50:32.457028+00	f
+1483	Fourth Wing	fourth wing | rebecca yarros	2023	561	Novel	Adult	English	Yellow	Series	f	f	f	2026-10-10 09:50:32.660594+00	2026-10-10 09:50:32.660594+00	f
+1484	Heartless	heartless | elsie silver	2022	432	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:32.759451+00	2026-10-10 09:50:32.759451+00	f
+1485	The Extra	the extra | annie neugebauer	2025	83	Novella	Adult	English	Green	Series	f	f	f	2026-10-10 09:50:33.359863+00	2026-10-10 09:50:33.359863+00	f
+1486	Anatomy of an Alibi	anatomy of an alibi | ashley elston	2026	314	Novel	Adult	English	Green	Standalone	f	f	f	2026-10-10 09:50:33.459661+00	2026-10-10 09:50:33.459661+00	f
+1487	Across the Vanishing Sky	across the vanishing sky | catherine cowles	2026	493	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:33.661425+00	2026-10-10 09:50:33.661425+00	f
+1488	The Secret Lives of Murderers' Wives	the secret lives of murderers' wives | elizabeth arnott	2026	296	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:33.857452+00	2026-10-10 09:50:33.857452+00	f
+1489	The Library at Hellebore	the library at hellebore | cassandra khaw	2025	266	Novel	Adult	English	Blue	Standalone	t	t	f	2026-10-10 09:50:34.060984+00	2026-10-10 09:50:34.060984+00	f
+1490	Just Friends	just friends | haley pham	2026	292	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:50:34.256717+00	2026-10-10 09:50:34.256717+00	f
+1491	Butter	butter | asako yuzuki	2017	474	Novel	Adult	Japanese	Yellow	Standalone	t	f	f	2026-10-10 09:50:34.459276+00	2026-10-10 09:50:34.459276+00	f
+1492	I'm a Fan	i'm a fan | sheena patel	2022	203	Novel	Adult	English	Pink	Standalone	t	f	f	2026-10-10 09:50:34.656695+00	2026-10-10 09:50:34.656695+00	f
+1493	Strange Houses	strange houses | uketsu	2021	197	Novella	Adult	Japanese	Red	Standalone	t	f	f	2026-10-10 09:50:34.755789+00	2026-10-10 09:50:34.755789+00	f
+1494	Walking Practice	walking practice | dolki min	2022	160	Novella	Adult	Korean	Black	Standalone	t	t	f	2026-10-10 09:50:34.963063+00	2026-10-10 09:50:34.963063+00	f
+1495	The Ending Writes Itself	the ending writes itself | evelyn clarke	2026	385	Novel	Adult	English	White	Standalone	f	f	f	2026-10-10 09:50:35.254421+00	2026-10-10 09:50:35.254421+00	f
+1496	The Caretaker	the caretaker | marcus kliewer	2026	291	Novel	Adult	English	Teal	Standalone	f	f	f	2026-10-10 09:50:35.357531+00	2026-10-10 09:50:35.357531+00	f
+1497	My Heart Is a Chainsaw	my heart is a chainsaw | stephen graham jones	2021	439	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:50:35.460726+00	2026-10-10 09:50:35.460726+00	f
+1498	Skate It Till You Make It	skate it till you make it | rufaro faith mazarura	2026	334	Novel	Adult	English	Blue	Standalone	t	f	f	2026-10-10 09:50:35.666559+00	2026-10-10 09:50:35.666559+00	f
+1499	It's Not the End of the World	it's not the end of the world | jonathan parks-ramage	2025	380	Novel	Adult	English	Orange	Standalone	f	t	f	2026-10-10 09:50:35.760335+00	2026-10-10 09:50:35.760335+00	f
+1500	These Violent Delights	these violent delights | micah nemerever	2020	460	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:50:35.959711+00	2026-10-10 09:50:35.959711+00	f
+1501	Of Monsters and Mainframes	of monsters and mainframes | barbara truelove	2025	367	Novel	Adult	English	Black	Standalone	f	t	f	2026-10-10 09:50:36.163494+00	2026-10-10 09:50:36.163494+00	f
+1502	Heated Rivalry	heated rivalry | rachel reid	2019	337	Novel	Adult	English	Blue	Series	f	t	f	2026-10-10 09:50:36.450967+00	2026-10-10 09:50:36.450967+00	f
+1503	Iron Flame	iron flame | rebecca yarros	2023	786	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:36.469601+00	2026-10-10 09:50:36.469601+00	f
+1504	Hungerstone	hungerstone | kat dunn	2025	377	Novel	Adult	English	Brown	Standalone	f	t	f	2026-10-10 09:50:36.761186+00	2026-10-10 09:50:36.761186+00	f
+1505	Vladimir	vladimir | julia may jonas	2022	292	Novel	Adult	English	Black	Standalone	f	f	f	2026-10-10 09:50:36.966128+00	2026-10-10 09:50:36.966128+00	f
+1506	Stars In Your Eyes	stars in your eyes | kacen callender	2023	324	Novel	Adult	English	Pink	Standalone	t	t	f	2026-10-10 09:50:37.157207+00	2026-10-10 09:50:37.157207+00	f
+1507	Astrid Parker Doesn't Fail	astrid parker doesn't fail | ashley herring blake	2022	363	Novel	Adult	English	Teal	Series	f	t	f	2026-10-10 09:50:37.258287+00	2026-10-10 09:50:37.258287+00	f
+1508	Thirty Love	thirty love | tom vellner	2026	306	Novel	Adult	English	Green	Standalone	f	t	f	2026-10-10 09:50:37.557909+00	2026-10-10 09:50:37.557909+00	f
+1509	The Devil She Knows	the devil she knows | alexandria bellefleur	2025	322	Novel	Adult	English	Pink	Standalone	f	t	f	2026-10-10 09:50:37.661491+00	2026-10-10 09:50:37.661491+00	f
+1510	Five	five | ilona bannister	2026	230	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:37.956013+00	2026-10-10 09:50:37.956013+00	f
+1511	Blue Sisters	blue sisters | coco mellors	2024	371	Novel	Adult	English	White	Standalone	f	t	f	2026-10-10 09:50:38.181286+00	2026-10-10 09:50:38.181286+00	f
+1512	Funny Story	funny story | emily henry	2024	384	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:38.359564+00	2026-10-10 09:50:38.359564+00	f
+1513	Not Safe For Work	not safe for work | nisha j. tuli	2025	335	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:50:38.65155+00	2026-10-10 09:50:38.65155+00	f
+1514	From Below	from below | darcy coates	2022	469	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:38.756041+00	2026-10-10 09:50:38.756041+00	f
+1515	The Housewife	the housewife | natalie barelli	2026	368	Novel	Adult	English	Pink	Standalone	f	f	f	2026-10-10 09:50:39.072819+00	2026-10-10 09:50:39.072819+00	f
+1516	The Other	the other | annie neugebauer	2026	152	Novella	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:39.15954+00	2026-10-10 09:50:39.15954+00	f
+1517	Christine	christine | stephen king	1983	749	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:39.260229+00	2026-10-10 09:50:39.260229+00	f
+1518	FantasticLand	fantasticland | mike bockoven	2016	277	Novel	Adult	English	Gray	Standalone	f	f	f	2026-10-10 09:50:39.566021+00	2026-10-10 09:50:39.566021+00	f
+1519	King of Wrath	king of wrath | ana huang	2022	379	Novel	Adult	English	White	Series	t	f	f	2026-10-10 09:50:39.672746+00	2026-10-10 09:50:39.672746+00	f
+1520	Tempting Venom	tempting venom | rina kent	2026	564	Novel	Adult	English	White	Series	f	t	f	2026-10-10 09:50:39.855209+00	2026-10-10 09:50:39.855209+00	f
+1521	Too Old For This	too old for this | samantha downing	2025	316	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:39.960775+00	2026-10-10 09:50:39.960775+00	f
+1522	Yesteryear	yesteryear | caro claire burke	2026	427	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:40.257599+00	2026-10-10 09:50:40.257599+00	f
+1523	The Employees	the employees | olga ravn	2018	155	Novella	Adult	Danish	Black	Standalone	f	f	f	2026-10-10 09:50:40.473903+00	2026-10-10 09:50:40.473903+00	f
+1524	The Business Trip	the business trip | jessie garcia	2025	294	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:40.854947+00	2026-10-10 09:50:40.854947+00	f
+1525	Deep Cuts	deep cuts | holly brickley	2025	284	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:41.064895+00	2026-10-10 09:50:41.064895+00	f
+1526	The Fountains of Silence	the fountains of silence | ruta sepetys	2019	492	Novel	Young adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:41.168398+00	2026-10-10 09:50:41.168398+00	f
+1527	Your Knife, My Heart	your knife, my heart | k.m. moronova	2025	301	Novel	Adult	English	Blue	Series	f	f	f	2026-10-10 09:50:41.471313+00	2026-10-10 09:50:41.471313+00	f
+1528	Stranger Things Have Happened	stranger things have happened | kasie west	2026	291	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:41.571261+00	2026-10-10 09:50:41.571261+00	f
+1529	Tomorrow, and Tomorrow, and Tomorrow	tomorrow, and tomorrow, and tomorrow | gabrielle zevin	2022	397	Novel	Adult	English	Multicolor	Standalone	t	f	f	2026-10-10 09:50:41.858865+00	2026-10-10 09:50:41.858865+00	f
+1530	The Unknown	the unknown | riley sager	2026	366	Novel	Adult	English	Red	Standalone	f	f	f	2026-10-10 09:50:41.968456+00	2026-10-10 09:50:41.968456+00	f
+1531	My Friends	my friends | fredrik backman	2025	422	Novel	Adult	Swedish	Blue	Standalone	f	f	f	2026-10-10 09:50:42.070329+00	2026-10-10 09:50:42.070329+00	f
+1532	Hot Girl Murder Club	hot girl murder club | ashley winstead	2026	354	Novel	Adult	English	Blue	Standalone	f	t	f	2026-10-10 09:50:42.253836+00	2026-10-10 09:50:42.253836+00	f
+1533	Bright Young Women	bright young women | jessica knoll	2023	373	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:42.457782+00	2026-10-10 09:50:42.457782+00	f
+1534	The Open Era	the open era | edward schmit	2026	351	Novel	Adult	English	Purple	Standalone	f	f	f	2026-10-10 09:50:42.667922+00	2026-10-10 09:50:42.667922+00	f
+1535	The Saturday Night Ghost Club	the saturday night ghost club | craig davidson	2018	253	Novel	Adult	English	Blue	Standalone	f	f	f	2026-10-10 09:50:42.875004+00	2026-10-10 09:50:42.875004+00	f
+1536	The Housemaid's Secret	the housemaid's secret | freida mcfadden	2023	327	Novel	Adult	English	Red	Series	f	f	f	2026-10-10 09:50:42.967641+00	2026-10-10 09:50:42.967641+00	f
+1537	My Roommate Is a Vampire	my roommate is a vampire | jenna levine	2023	337	Novel	Adult	English	Pink	Series	f	f	f	2026-10-10 09:50:43.264896+00	2026-10-10 09:50:43.264896+00	f
+1538	If It Makes You Happy	if it makes you happy | julie olivia	2025	491	Novel	Adult	English	Orange	Standalone	f	f	f	2026-10-10 09:50:43.556897+00	2026-10-10 09:50:43.556897+00	f
+1539	The Woman in the Purple Skirt	the woman in the purple skirt | natsuko imamura	2019	127	Novella	Adult	Japanese	Purple	Standalone	t	f	f	2026-10-10 09:50:43.757906+00	2026-10-10 09:50:43.757906+00	f
+1540	Onyx Storm	onyx storm | rebecca yarros	2025	656	Novel	Adult	English	Black	Series	f	f	f	2026-10-10 09:50:43.867491+00	2026-10-10 09:50:43.867491+00	f
+1541	The Green Mile	the green mile | stephen king	1996	433	Novel	Adult	English	Black	Standalone	t	f	f	2026-10-10 09:50:43.979648+00	2026-10-10 09:50:43.979648+00	f
+1542	The Husbands	the husbands | holly gramazio	2025	316	Novel	Adult	English	Yellow	Standalone	f	f	f	2026-10-10 09:50:44.356043+00	2026-10-10 09:50:44.356043+00	f
+1078	Things Have Gotten Worse Since We Last Spoke and Other Misfortunes	things have gotten worse since we last spoke and other misfortunes | eric larocca	2022	275	Short stories	Adult	English	White	Standalone	f	t	f	2026-10-10 09:49:45.162803+00	2026-10-11 15:01:49.133213+00	f
+2393	Beneath a Midnight Moon	beneath a midnight moon | catherine cowles	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:53.074229+00	2026-10-11 17:07:58.645392+00	t
+1044	Carrie Soto is Back	carrie soto is back | taylor jenkins reid	2022	364	Novel	Adult	English	Orange	Standalone	t	f	f	2026-10-10 09:49:42.578714+00	2026-10-11 17:42:31.031711+00	f
+2440	My Lovely Wife	my lovely wife | samantha downing	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:09.160895+00	2026-10-11 15:10:09.160895+00	f
+2397	Bunny	bunny | mona awad	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:56.774455+00	2026-10-11 15:10:17.471805+00	f
+2462	Not Quite Dead Yet	not quite dead yet | holly jackson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.560445+00	2026-10-11 15:10:12.560445+00	f
+2466	Where You End	where you end | abbott kahler	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.766078+00	2026-10-11 15:10:12.766078+00	f
+2468	Yours Truly	yours truly | abby jimenez	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.777518+00	2026-10-11 15:10:12.777518+00	f
+2469	A Particularly Nasty Case	a particularly nasty case | adam kay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.791505+00	2026-10-11 15:10:12.791505+00	f
+2472	Summer in the City	summer in the city | alex aster	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.816251+00	2026-10-11 15:10:12.816251+00	f
+2473	The Night Shift	the night shift | alex finlay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.823121+00	2026-10-11 15:10:12.823121+00	f
+2474	What Have We Done	what have we done | alex finlay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.829857+00	2026-10-11 15:10:12.829857+00	f
+2479	First	first | ali hazelwood	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.869214+00	2026-10-11 15:10:12.869214+00	f
+2480	Love in the Time of Serial Killers	love in the time of serial killers | alicia thompson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.876737+00	2026-10-11 15:10:12.876737+00	f
+2483	We Are Watching	we are watching | alison gaylin	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.896897+00	2026-10-11 15:10:12.896897+00	f
+2485	The Bay	the bay | allie reynolds	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.913057+00	2026-10-11 15:10:12.913057+00	f
+2490	The Catch	the catch | amy lea	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.947986+00	2026-10-11 15:10:12.947986+00	f
+2491	Something Like Fate	something like fate | amy lea	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.953091+00	2026-10-11 15:10:12.953091+00	f
+2492	Ruins	ruins | amy taylor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.95974+00	2026-10-11 15:10:12.95974+00	f
+2496	You Weren't Meant to Be Human	you weren't meant to be human | andrew joseph white	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.987607+00	2026-10-11 15:10:12.987607+00	f
+2497	The Seven Visitations of Sydney Burgess	the seven visitations of sydney burgess | andy marino	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.997391+00	2026-10-11 15:10:12.997391+00	f
+2501	Dream On, Ramona RIley	dream on, ramona riley | ashley herring blake	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.025702+00	2026-10-11 15:10:13.025702+00	f
+2503	Loving a Vampire Is Total Chaos	loving a vampire is total chaos | aura hayes	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.04343+00	2026-10-11 15:10:13.04343+00	f
+2504	Book Boyfriend	book boyfriend | austin siegemund-broka; emily wibberly	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.050864+00	2026-10-11 15:10:13.050864+00	f
+2507	The Guest	the guest | b. a. paris	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.073946+00	2026-10-11 15:10:13.073946+00	f
+2508	Good Spirits	good spirits | b. k. borison	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.080923+00	2026-10-11 15:10:13.080923+00	f
+2509	Coram House	coram house | bailey seybolt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.091974+00	2026-10-11 15:10:13.091974+00	f
+2510	Discontent	discontent | beatriz serrano	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.103072+00	2026-10-11 15:10:13.103072+00	f
+2511	Pomona Afton Can So Solve a Murder	pomona afton can so solve a murder | bellamy rose	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.13764+00	2026-10-11 15:10:13.13764+00	f
+2512	Everyone on This Train is a Suspect	everyone on this train is a suspect | benjamin stevenson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.146667+00	2026-10-11 15:10:13.146667+00	f
+2514	Kindling	kindling | bonnie woods	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.169622+00	2026-10-11 15:10:13.169622+00	f
+2515	Man, Fuck This House	man, fuck this house | brian asman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.179251+00	2026-10-11 15:10:13.179251+00	f
+2516	Candy Cain Kills	candy cain kills | brian mcauley	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.184984+00	2026-10-11 15:10:13.184984+00	f
+2518	Blood Moon	blood moon | britney s. lewis	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.20175+00	2026-10-11 15:10:13.20175+00	f
+2519	Slewfoot	slewfoot | brom	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.210426+00	2026-10-11 15:10:13.210426+00	f
+2520	A Haunting in the Arctic	a haunting in the arctic | c. j. cooke	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.218864+00	2026-10-11 15:10:13.218864+00	f
+2521	The Cut	the cut | c. j. dotson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.226587+00	2026-10-11 15:10:13.226587+00	f
+2522	Last to Leave the Room	last to leave the room | caitlin starling	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.236346+00	2026-10-11 15:10:13.236346+00	f
+2523	The Graceview Patient	the graceview patient | caitlin starling	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.241808+00	2026-10-11 15:10:13.241808+00	f
+2524	At the Bottom of the Garden	at the bottom of the garden | camilla bruce	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.252426+00	2026-10-11 15:10:13.252426+00	f
+2525	The Takeover	the takeover | cara tanamachi	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.280573+00	2026-10-11 15:10:13.280573+00	f
+2526	The Astrology House	the astrology house | carinn jade	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.292637+00	2026-10-11 15:10:13.292637+00	f
+2527	Code Word Romance	code word romance | carlie walker	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.303445+00	2026-10-11 15:10:13.303445+00	f
+2529	Mirrorland	mirrorland | carole johnstone	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.323684+00	2026-10-11 15:10:13.323684+00	f
+2530	Sugarcane	sugarcane | cassandra celia	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.330225+00	2026-10-11 15:10:13.330225+00	f
+2531	The Clinic	the clinic | cate quinn	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.33732+00	2026-10-11 15:10:13.33732+00	f
+2536	The Disappearing Act	the disappearing act | catherine steadman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.373808+00	2026-10-11 15:10:13.373808+00	f
+2537	Out Behind the Barn	out behind the barn | chad lutzke; john boden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.382742+00	2026-10-11 15:10:13.382742+00	f
+2539	The Farmhouse	the farmhouse | chelsea conradt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.398154+00	2026-10-11 15:10:13.398154+00	f
+2540	The Midnight Shift	the midnight shift | cheon seon-ran	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.404746+00	2026-10-11 15:10:13.404746+00	f
+2544	Falling	falling | christina lauren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.434117+00	2026-10-11 15:10:13.434117+00	f
+2545	Night Birds	night birds | christopher golden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.439478+00	2026-10-11 15:10:13.439478+00	f
+2549	Ghost Eaters	ghost eaters | clay mcleod chapman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.465777+00	2026-10-11 15:10:13.465777+00	f
+2550	Our Last Resort	our last resort | clemence michallon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.470211+00	2026-10-11 15:10:13.470211+00	f
+2551	Polybius	polybius | collin armstrong	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.481177+00	2026-10-11 15:10:13.481177+00	f
+2552	Suffer the Children	suffer the children | craig dilouie	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.487714+00	2026-10-11 15:10:13.487714+00	f
+2553	Something in the Walls	something in the walls | daisy pearce	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.494378+00	2026-10-11 15:10:13.494378+00	f
+2554	The Truth According to Amber	the truth according to amber | danica nava	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.500806+00	2026-10-11 15:10:13.500806+00	f
+2561	Aftertaste	aftertaste | daria lavelle	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.547819+00	2026-10-11 15:10:13.547819+00	f
+2562	Bad Man	bad man | dathan auerbach	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.554594+00	2026-10-11 15:10:13.554594+00	f
+2563	Withered Hill	withered hill | david barnett	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.561129+00	2026-10-11 15:10:13.561129+00	f
+2564	Maggie's Grave	maggie's grave | david sodergren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.566347+00	2026-10-11 15:10:13.566347+00	f
+2565	The Forgotten Island	the forgotten island | david sodergren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.570793+00	2026-10-11 15:10:13.570793+00	f
+2566	Summer of the Monsters	summer of the monsters | david sodergren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.575222+00	2026-10-11 15:10:13.575222+00	f
+2567	A Curious Beginning	a curious beginning | deanna raybourn	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.581721+00	2026-10-11 15:10:13.581721+00	f
+2570	Moderation	moderation | elaine castillo	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.602442+00	2026-10-11 15:10:13.602442+00	f
+2571	The Heartbreak Hotel	the heartbreak hotel | ellen o'clover	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.608963+00	2026-10-11 15:10:13.608963+00	f
+2572	Bad Date	bad date | ellery lloyd	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.61519+00	2026-10-11 15:10:13.61519+00	f
+2573	Anywhere With You	anywhere with you | ellie palmer	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.621967+00	2026-10-11 15:10:13.621967+00	f
+2575	Wild Eyes	wild eyes | elsie silver	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.635836+00	2026-10-11 15:10:13.635836+00	f
+2576	Gothictown	gothictown | emily carpenter	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.642515+00	2026-10-11 15:10:13.642515+00	f
+2577	Yours for the Season	yours for the season | emily stone	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.654899+00	2026-10-11 15:10:13.654899+00	f
+2579	We Are Always Tender With Our Dead	we are always tender with our dead | eric larocca	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.668435+00	2026-10-11 15:10:13.668435+00	f
+2580	Fall Too Well	fall too well | erin branscom	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.675114+00	2026-10-11 15:10:13.675114+00	f
+2581	Unromance	unromance | erin connor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.681581+00	2026-10-11 15:10:13.681581+00	f
+2582	Bake the Town Red	bake the town red | eva marks	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.688446+00	2026-10-11 15:10:13.688446+00	f
+3237	Unfortunately Yours	unfortunately yours | tessa bailey	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.705214+00	2026-10-11 15:56:56.718356+00	f
+3238	Hell Bent	hell bent | leigh bardugo	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.709663+00	2026-10-11 15:56:56.805992+00	f
+3239	Dead Beat	dead beat | leigh bardugo	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.713211+00	2026-10-11 15:56:56.806067+00	f
+3240	A Torch Against the Night	a torch against the night | sabaa tahir	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.716442+00	2026-10-11 15:56:56.806091+00	f
+3241	A Reaper at the Gates	a reaper at the gates | sabaa tahir	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.719596+00	2026-10-11 15:56:56.806108+00	f
+3242	A Sky Beyond the Storm	a sky beyond the storm | sabaa tahir	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.722894+00	2026-10-11 15:56:56.806123+00	f
+3243	Bad Girl Reputation	bad girl reputation | elle kennedy	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.726355+00	2026-10-11 15:56:56.806139+00	f
+3244	The Summer Girl	the summer girl | elle kennedy	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.729376+00	2026-10-11 15:56:56.806154+00	f
+3245	Us Against You	us against you | fredrik backman	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.732448+00	2026-10-11 15:56:56.806172+00	f
+2583	Change of Heart	change of heart | falon ballard	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.695408+00	2026-10-11 15:10:13.695408+00	f
+2584	Full Bloom	full bloom | francesca serritella	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.702249+00	2026-10-11 15:10:13.702249+00	f
+2585	The Next Best Fling	the next best fling | gabriella gamez	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.713585+00	2026-10-11 15:10:13.713585+00	f
+2586	Itch	itch | gemma amor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.71776+00	2026-10-11 15:10:13.71776+00	f
+2588	The Merge	the merge | grace walker	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.730863+00	2026-10-11 15:10:13.730863+00	f
+2589	We Sold Our Souls	we sold our souls | grady hendrix	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.735477+00	2026-10-11 15:10:13.735477+00	f
+2591	The Golden Couple	the golden couple | greer hendricks; sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.744323+00	2026-10-11 15:10:13.744323+00	f
+2595	Out of the Woods	out of the woods | hannah bonam-young	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.779693+00	2026-10-11 15:10:13.779693+00	f
+2596	Holiday Ever After	holiday ever after | hannah grace	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.784707+00	2026-10-11 15:10:13.784707+00	f
+2597	Same Paige	same paige | hannah jay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.793694+00	2026-10-11 15:10:13.793694+00	f
+2598	Maine Characters	maine characters | hannah orenstein	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.800653+00	2026-10-11 15:10:13.800653+00	f
+2599	The Search Party	the search party | hannah richell	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.807392+00	2026-10-11 15:10:13.807392+00	f
+2601	The Possession of Alba Diaz	the possession of alba diaz | isabel cañas	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.829302+00	2026-10-11 15:10:13.829302+00	f
+2602	The Darkest Half	the darkest half | j. a. redmerski	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.833744+00	2026-10-11 15:10:13.833744+00	f
+2604	Survivor	survivor | j. f. gonzalez	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.846782+00	2026-10-11 15:10:13.846782+00	f
+2605	Guava Flavored Lies	guava flavored lies | j.j. arias	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.853131+00	2026-10-11 15:10:13.853131+00	f
+2606	Spicy Little Curses	spicy little curses | j. t. geissinger	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.859687+00	2026-10-11 15:10:13.859687+00	f
+2608	The Strength of the Few	the strength of the few | james islington	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.870662+00	2026-10-11 15:10:13.870662+00	f
+2610	Flirting Lessons	flirting lessons | jasmine guillory	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.885747+00	2026-10-11 15:10:13.885747+00	f
+2611	Hidden Pictures	hidden pictures | jason rekulak	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.894946+00	2026-10-11 15:10:13.894946+00	f
+2612	Big Swiss	big swiss | jen beagin	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.90149+00	2026-10-11 15:10:13.90149+00	f
+2614	You Shouldn't Have Come Here	you shouldn't have come here | jeneva rose	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.915735+00	2026-10-11 15:10:13.915735+00	f
+2615	My Vampire Plus-One	my vampire plus-one | jenna levine	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.92266+00	2026-10-11 15:10:13.92266+00	f
+2616	I'm Glad My Mom Died	i'm glad my mom died | jennette mccurdy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.930345+00	2026-10-11 15:10:13.930345+00	f
+2617	Beneath the Stairs	beneath the stairs | jennifer fawcett	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.936972+00	2026-10-11 15:10:13.936972+00	f
+2618	The Butcher	the butcher | jennifer hillier	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.948304+00	2026-10-11 15:10:13.948304+00	f
+2619	My Darling Girl	my darling girl | jennifer mcmahon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.953235+00	2026-10-11 15:10:13.953235+00	f
+2620	I'll Be Home for Christmas	i'll be home for christmas | jenny bayliss	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.962301+00	2026-10-11 15:10:13.962301+00	f
+2621	Crafting for Sinners	crafting for sinners | jenny kiefer	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.966758+00	2026-10-11 15:10:13.966758+00	f
+2622	Open Wide	open wide | jessica gross	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.977949+00	2026-10-11 15:10:13.977949+00	f
+2623	The Ex Vows	the ex vows | jessica joyce	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.982525+00	2026-10-11 15:10:13.982525+00	f
+2624	Vera Wong's Guide to Snooping (on a Dead Man)	vera wong's guide to snooping (on a dead man) | jessie q. sutanto	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.99236+00	2026-10-11 15:10:13.99236+00	f
+2625	The Fiction Writer	the fiction writer | jillian cantor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.00775+00	2026-10-11 15:10:14.00775+00	f
+2628	Devil House	devil house | john darnielle	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.038454+00	2026-10-11 15:10:14.038454+00	f
+2632	It Waits in the Woods	it waits in the woods | josh malerman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.070185+00	2026-10-11 15:10:14.070185+00	f
+2633	Burn the Negative	burn the negative | josh winning	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.07668+00	2026-10-11 15:10:14.07668+00	f
+2636	No One Rides For Free	no one rides for free | judith sonnet	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.097511+00	2026-10-11 15:10:14.097511+00	f
+2637	Christmas at the Ranch	christmas at the ranch | julia mckay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.104075+00	2026-10-11 15:10:14.104075+00	f
+2638	Forget Me Not	forget me not | julie soto	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.114834+00	2026-10-11 15:10:14.114834+00	f
+2642	Welcome to Murder Week	welcome to murder week | karen dukess	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.142431+00	2026-10-11 15:10:14.142431+00	f
+2644	Bad for Business	bad for business | kat singleton	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.159695+00	2026-10-11 15:10:14.159695+00	f
+2647	Serial Killer Games	serial killer games | kate posey	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.189703+00	2026-10-11 15:10:14.189703+00	f
+2648	Fang Fiction	fang fiction | kate stayman-london	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.197911+00	2026-10-11 15:10:14.197911+00	f
+2649	Beautiful Nightmare	beautiful nightmare | katee robert	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.205365+00	2026-10-11 15:10:14.205365+00	f
+2650	A Love Most Fatal	a love most fatal | kath richards	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.21213+00	2026-10-11 15:10:14.21213+00	f
+2720	Overgrowth	overgrowth | mira grant	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.723411+00	2026-10-11 15:10:14.723411+00	f
+2651	The Bodyguard	the bodyguard | katherine center	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.218797+00	2026-10-11 15:10:14.218797+00	f
+2652	High Season	high season | katie bishop	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.228568+00	2026-10-11 15:10:14.228568+00	f
+2653	Knives, Seasoning, and a Dash of Love	knives, seasoning, and a dash of love | katrina kwan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.235765+00	2026-10-11 15:10:14.235765+00	f
+2654	Enchantra	enchantra | kaylie smith	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.240213+00	2026-10-11 15:10:14.240213+00	f
+2656	Party of Liars	party of liars | kelsey cox	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.256083+00	2026-10-11 15:10:14.256083+00	f
+2658	House of Beth	house of beth | kerry cullen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.272613+00	2026-10-11 15:10:14.272613+00	f
+2659	Mister Magic	mister magic | kiersten white	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.276979+00	2026-10-11 15:10:14.276979+00	f
+2660	My Boyfriends Are All Monsters	my boyfriends are all monsters | kimberly lemming	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.285972+00	2026-10-11 15:10:14.285972+00	f
+2663	Big Nick Energy	big nick energy | kristen bailey	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.304806+00	2026-10-11 15:10:14.304806+00	f
+2671	Love Me Stalk Me	love me stalk me | laura bishop	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.358181+00	2026-10-11 15:10:14.358181+00	f
+2700	Love at First Sighting	love at first sighting | mallory marlowe	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.571559+00	2026-10-11 15:10:14.571559+00	f
+2702	Bad Things Happened In This Room	bad things happened in this room | marie still	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.584971+00	2026-10-11 15:10:14.584971+00	f
+2703	Thirst	thirst | marina yuszczuk	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.592109+00	2026-10-11 15:10:14.592109+00	f
+2705	The Darkest Water	the darkest water | mark edwards	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.606806+00	2026-10-11 15:10:14.606806+00	f
+2706	The Wasp Trap	the wasp trap | mark edwards	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.61634+00	2026-10-11 15:10:14.61634+00	f
+2707	She's Not Sorry	she's not sorry | mary kubica	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.620695+00	2026-10-11 15:10:14.620695+00	f
+2710	The North Line	the north line | matt riordan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.645909+00	2026-10-11 15:10:14.645909+00	f
+2711	Feeders	feeders | matt serafini	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.659537+00	2026-10-11 15:10:14.659537+00	f
+3271	Lassiter	lassiter | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.972336+00	2026-10-11 15:56:56.806583+00	f
+2713	My Husband	my husband | maud ventura	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.672452+00	2026-10-11 15:10:14.672452+00	f
+2714	Suburban Hell	suburban hell | maureen kilmer	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.679366+00	2026-10-11 15:10:14.679366+00	f
+2717	The Perfect Rom-Com	the perfect rom-com | melissa ferguson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.702561+00	2026-10-11 15:10:14.702561+00	f
+2718	The Once and Future Me	the once and future me | melissa pace	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.709406+00	2026-10-11 15:10:14.709406+00	f
+2719	The October Film Haunt	the october film haunt | michael wehunt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.716787+00	2026-10-11 15:10:14.716787+00	f
+2721	Smile for the Cameras	smile for the cameras | miranda smith	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.731945+00	2026-10-11 15:10:14.731945+00	f
+2722	Unseen	unseen | molly burke	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.742+00	2026-10-11 15:10:14.742+00	f
+2723	Wrath of an Exile	wrath of an exile | monty jay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.7506+00	2026-10-11 15:10:14.7506+00	f
+2724	Nothing But the Rain	nothing but the rain | naomi salman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.758945+00	2026-10-11 15:10:14.758945+00	f
+2726	Crypt of the Moon Spider	crypt of the moon spider | nathan ballingrud	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.77004+00	2026-10-11 15:10:14.77004+00	f
+2727	The Burial Tide	the burial tide | neil sharpson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.774947+00	2026-10-11 15:10:14.774947+00	f
+2728	The Handyman Method	the handyman method | andrew sullivan; nick cutter	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.785652+00	2026-10-11 15:10:14.785652+00	f
+2729	Where He Left Me	where he left me | nicole baart	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.795457+00	2026-10-11 15:10:14.795457+00	f
+2733	Murder by Memory	murder by memory | olivia waite	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.825242+00	2026-10-11 15:10:14.825242+00	f
+2734	Gifted & Talented	gifted & talented | olivie blake	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.832322+00	2026-10-11 15:10:14.832322+00	f
+2735	Wolf.e	wolf.e | paisley hope	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.83902+00	2026-10-11 15:10:14.83902+00	f
+2737	The Confessions	the confessions | paul bradley carr	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.856579+00	2026-10-11 15:10:14.856579+00	f
+2738	Horror Movie	horror movie | paul tremblay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.861489+00	2026-10-11 15:10:14.861489+00	f
+2739	The Beast You Are	the beast you are | paul tremblay	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.868453+00	2026-10-11 15:10:14.868453+00	f
+2743	Tantrum	tantrum | rachel eve moulton	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.900822+00	2026-10-11 15:10:14.900822+00	f
+2744	Play Nice	play nice | rachel harrison	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.925235+00	2026-10-11 15:10:14.925235+00	f
+2745	Learning Curves	learning curves | rachel lacey	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.939213+00	2026-10-11 15:10:14.939213+00	f
+2750	Space Vampire	space vampire | ruby dixon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.99616+00	2026-10-11 15:10:14.99616+00	f
+2751	The Ice Retreat	the ice retreat | ruth kelly	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.002811+00	2026-10-11 15:10:15.002811+00	f
+2752	Zero Days	zero days | ruth ware	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.009244+00	2026-10-11 15:10:15.009244+00	f
+2753	The Woman in Suite 11	the woman in suite 11 | ruth ware	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.016466+00	2026-10-11 15:10:15.016466+00	f
+2756	Savage Blooms	savage blooms | s. t. gibson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.03507+00	2026-10-11 15:10:15.03507+00	f
+2760	The Ex-Wives Club	the ex-wives club | sally hepworth	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.055971+00	2026-10-11 15:10:15.055971+00	f
+2761	I Was Feeling Epic	i was feeling epic | samantha highfill	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.06347+00	2026-10-11 15:10:15.06347+00	f
+2762	True Crime	true crime | samantha kolesnik	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.072852+00	2026-10-11 15:10:15.072852+00	f
+2763	The Cabin in the Woods	the cabin in the woods | sarah alderson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.08161+00	2026-10-11 15:10:15.08161+00	f
+2766	A Merry Little Lie	a merry little lie | sarah morgan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.097434+00	2026-10-11 15:10:15.097434+00	f
+2767	Gone Tonight	gone tonight | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.102566+00	2026-10-11 15:10:15.102566+00	f
+2768	House of Glass	house of glass | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.107596+00	2026-10-11 15:10:15.107596+00	f
+2769	The Locked Ward	the locked ward | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.112109+00	2026-10-11 15:10:15.112109+00	f
+2772	Volatile Memory	volatile memory | seth haddon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.136705+00	2026-10-11 15:10:15.136705+00	f
+2773	I Did Warn Her	i did warn her | sian gilbert	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.143331+00	2026-10-11 15:10:15.143331+00	f
+2774	The Book of Cold Cases	the book of cold cases | simone st. james	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.149561+00	2026-10-11 15:10:15.149561+00	f
+2775	Tart	tart | slutty cheff	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.156691+00	2026-10-11 15:10:15.156691+00	f
+2776	Forget Me Not	forget me not | stacy willingham	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.170686+00	2026-10-11 15:10:15.170686+00	f
+2777	The Threshing Floor	the threshing floor | steph nelson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.178052+00	2026-10-11 15:10:15.178052+00	f
+2778	Overdue	overdue | stephanie perkins	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.18478+00	2026-10-11 15:10:15.18478+00	f
+2780	Triple Sec	triple sec | tj alexander	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.201597+00	2026-10-11 15:10:15.201597+00	f
+2783	A House With Good Bones	a house with good bones | t. kingfisher	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.226852+00	2026-10-11 15:10:15.226852+00	f
+2785	Left of Forever	left of forever | tarah dewitt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.243973+00	2026-10-11 15:10:15.243973+00	f
+2786	Love Letters to a Serial Killer	love letters to a serial killer | tasha coryell	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.256532+00	2026-10-11 15:10:15.256532+00	f
+2787	Such Lovely Skin	such lovely skin | tatiana schlote-bonne	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.271611+00	2026-10-11 15:10:15.271611+00	f
+2788	Hairpin Bridge	hairpin bridge | taylor adams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.27842+00	2026-10-11 15:10:15.27842+00	f
+2789	The Inheritance	the inheritance | trisha sakhlecha	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.285742+00	2026-10-11 15:10:15.285742+00	f
+2790	The Second Death of Locke	the second death of locke | v. l. bovalino	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.297247+00	2026-10-11 15:10:15.297247+00	f
+2791	The Honeycrisp Orchard Inn	the honeycrisp orchard inn | valerie bowman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.305742+00	2026-10-11 15:10:15.305742+00	f
+2792	Someone Knows	someone knows | vi keeland	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.313995+00	2026-10-11 15:10:15.313995+00	f
+2793	The Unraveling	the unraveling | vi keeland	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.32409+00	2026-10-11 15:10:15.32409+00	f
+2794	Escape Velocity	escape velocity | victor manibo	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.334178+00	2026-10-11 15:10:15.334178+00	f
+2796	Bourbon and Secrets	bourbon and secrets | victoria wilder	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.347841+00	2026-10-11 15:10:15.347841+00	f
+2797	Bourbon and Proof	bourbon and proof | victoria wilder	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.353343+00	2026-10-11 15:10:15.353343+00	f
+2798	We Came to Welcome You	we came to welcome you | vincent tirado	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.363903+00	2026-10-11 15:10:15.363903+00	f
+2809	The Long Game	the long game | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.472361+00	2026-10-11 15:10:15.472361+00	f
+2811	The Wind Weaver	the wind weaver | julie johnson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.489054+00	2026-10-11 15:10:15.489054+00	f
+2816	Game Changer	game changer | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.525094+00	2026-10-11 15:10:15.525094+00	f
+2817	Role Model	role model | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.529642+00	2026-10-11 15:10:15.529642+00	f
+2818	Common Goal	common goal | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.534563+00	2026-10-11 15:10:15.534563+00	f
+2819	Tough Guy	tough guy | rachel reid	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.538992+00	2026-10-11 15:10:15.538992+00	f
+2820	Pretty Vicious	pretty vicious | lexi davis	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.546997+00	2026-10-11 15:10:15.546997+00	f
+2822	The Storm	the storm | rachel hawkins	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.56391+00	2026-10-11 15:10:15.56391+00	f
+2827	Paper Cut	paper cut | rachel taff	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.592495+00	2026-10-11 15:10:15.592495+00	f
+2833	The Exes	the exes | leodora darlington	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.628166+00	2026-10-11 15:10:15.628166+00	f
+2835	Warning Signs	warning signs | tracy sierra	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.655932+00	2026-10-11 15:10:15.655932+00	f
+2837	Her Last Breath	her last breath | taylor adams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.668957+00	2026-10-11 15:10:15.668957+00	f
+2839	The Re-Do List	the re-do list | denise williams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.682738+00	2026-10-11 15:10:15.682738+00	f
+2842	Nowhere Burning	nowhere burning | catriona ward	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.699537+00	2026-10-11 15:10:15.699537+00	f
+2843	Sap and Secrets	sap and secrets | daphne elliot	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.70761+00	2026-10-11 15:10:15.70761+00	f
+2844	Accidentally Yours	accidentally yours | christina lauren	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.712506+00	2026-10-11 15:10:15.712506+00	f
+2845	Time Will Tell	time will tell | hannah bonam-young	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.717352+00	2026-10-11 15:10:15.717352+00	f
+2847	Second Act Romance	second act romance | julie soto	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.727537+00	2026-10-11 15:10:15.727537+00	f
+2848	A Play for Love	a play for love | trilina pucci	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.734542+00	2026-10-11 15:10:15.734542+00	f
+2854	Half City	half city | kate golden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.792161+00	2026-10-11 15:10:15.792161+00	f
+2856	Whidbey	whidbey | t kira mahealani madden	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.811106+00	2026-10-11 15:10:15.811106+00	f
+2859	A Girl Like Her	a girl like her | talia hibbert	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.830447+00	2026-10-11 15:10:15.830447+00	f
+2860	How to Survive in the Woods	how to survive in the woods | kat rosenfield	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.837124+00	2026-10-11 15:10:15.837124+00	f
+2865	Don't Ask Why	don't ask why | steph nelson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.888652+00	2026-10-11 15:10:15.888652+00	f
+2867	The Move	the move | j. p. delaney	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.899072+00	2026-10-11 15:10:15.899072+00	f
+2868	Served Him Right	served him right | lisa unger	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.904456+00	2026-10-11 15:10:15.904456+00	f
+2869	How to Write a Love Story	how to write a love story | catherine walsh	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.911431+00	2026-10-11 15:10:15.911431+00	f
+2870	Love Song	love song | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.916145+00	2026-10-11 15:10:15.916145+00	f
+2871	You Did Nothing Wrong	you did nothing wrong | c. g. drews	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.92304+00	2026-10-11 15:10:15.92304+00	f
+2872	You Should Have Been Nicer to My Mom	you should have been nicer to my mom | vincent tirado	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.92757+00	2026-10-11 15:10:15.92757+00	f
+2873	Strangers in the Villa	strangers in the villa | robyn harding	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.934531+00	2026-10-11 15:10:15.934531+00	f
+2874	Please Don't Go	please don't go | e. salvador	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.941798+00	2026-10-11 15:10:15.941798+00	f
+2876	A Promise So Bold and Broken	a promise so bold and broken | sophia st. germain	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.962588+00	2026-10-11 15:10:15.962588+00	f
+2877	A Bond So Fierce and Fragile	a bond so fierce and fragile | sophia st. germain	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.967363+00	2026-10-11 15:10:15.967363+00	f
+2878	A Fate So Dark and Delicate	a fate so dark and delicate | sophia st. germain	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.972393+00	2026-10-11 15:10:15.972393+00	f
+2880	Sorry For Your Loss	sorry for your loss | georgia mcveigh	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.986495+00	2026-10-11 15:10:15.986495+00	f
+2881	A Good Person	a good person | kirsten king	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.993473+00	2026-10-11 15:10:15.993473+00	f
+2882	The Bridge Back To You	the bridge back to you | riss m. neilson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.999959+00	2026-10-11 15:10:15.999959+00	f
+2884	Kiss, Mary, Kill	kiss, mary, kill | lori gold	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.018951+00	2026-10-11 15:10:16.018951+00	f
+2885	A Killer In the Family	a killer in the family | amin ahmad	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.027415+00	2026-10-11 15:10:16.027415+00	f
+2886	Enemies to Lovers	enemies to lovers | alisha rai	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.034935+00	2026-10-11 15:10:16.034935+00	f
+2889	The Summer I Found You	the summer i found you | jennifer o'brien	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.050648+00	2026-10-11 15:10:16.050648+00	f
+2891	While You Were Seething	while you were seething | charlotte stein	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.063749+00	2026-10-11 15:10:16.063749+00	f
+2893	The Write Off	the write off | kara mcdowell	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.077334+00	2026-10-11 15:10:16.077334+00	f
+2895	Morsell	morsell | carter keane	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.088797+00	2026-10-11 15:10:16.088797+00	f
+2897	The Drop	the drop | s.r. masters	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.099678+00	2026-10-11 15:10:16.099678+00	f
+2899	Watership Down	watership down | richard adams	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.111536+00	2026-10-11 15:10:16.111536+00	f
+2903	How (Not) To Raise The Dead	how (not) to raise the dead | rachael chadwick	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.136982+00	2026-10-11 15:10:16.136982+00	f
+2906	The Author Weekend	the author weekend | laura zigman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.158705+00	2026-10-11 15:10:16.158705+00	f
+2909	Mine to Hunt	mine to hunt | c. o. wheel; tanya das	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.180633+00	2026-10-11 15:10:16.180633+00	f
+2910	The Last Page	the last page | katie holt	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.187097+00	2026-10-11 15:10:16.187097+00	f
+2911	The Dorians	the dorians | nick cutter	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.191748+00	2026-10-11 15:10:16.191748+00	f
+2912	Until Death	until death | mary berman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.19878+00	2026-10-11 15:10:16.19878+00	f
+2917	It Happened One Murder	it happened one murder | liz lawson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.231523+00	2026-10-11 15:10:16.231523+00	f
+2919	The Romance Line	the romance line | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.243352+00	2026-10-11 15:10:16.243352+00	f
+2920	The Proposal Play	the proposal play | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.24807+00	2026-10-11 15:10:16.24807+00	f
+2921	The Girlfriend Zone	the girlfriend zone | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.252688+00	2026-10-11 15:10:16.252688+00	f
+2922	The Overtime Kiss	the overtime kiss | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.257198+00	2026-10-11 15:10:16.257198+00	f
+2923	The Flirting Game	the flirting game | lauren blakely	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.261687+00	2026-10-11 15:10:16.261687+00	f
+2925	When Sparks Fly	when sparks fly | monica murphy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.273494+00	2026-10-11 15:10:16.273494+00	f
+2926	The Risk	the risk | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.278038+00	2026-10-11 15:10:16.278038+00	f
+2927	The Chase	the chase | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.283205+00	2026-10-11 15:10:16.283205+00	f
+2928	The Play	the play | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.287913+00	2026-10-11 15:10:16.287913+00	f
+2929	The Dare	the dare | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.292881+00	2026-10-11 15:10:16.292881+00	f
+2930	The Charlie Method	the charlie method | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.297738+00	2026-10-11 15:10:16.297738+00	f
+2931	The Graham Effect	the graham effect | elle kennedy	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.30247+00	2026-10-11 15:10:16.30247+00	f
+2933	Crown Me Yours	crown me yours | liv zander	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.314467+00	2026-10-11 15:10:16.314467+00	f
+2934	Midnight Message	midnight message | avina st. graves	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.321322+00	2026-10-11 15:10:16.321322+00	f
+2936	The Girl in the Lake	the girl in the lake | lauren oliver	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.33239+00	2026-10-11 15:10:16.33239+00	f
+2937	Marion	marion | leah rowan	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.339392+00	2026-10-11 15:10:16.339392+00	f
+2942	Girl's Girl	girl's girl | sonia feldman	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.382605+00	2026-10-11 15:10:16.382605+00	f
+2943	The Song of Salt and Smoke	the song of salt and smoke | seren rose	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.389082+00	2026-10-11 15:10:16.389082+00	f
+2968	The Roommate Rule	the roommate rule | georgia stone	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.535858+00	2026-10-11 15:10:16.535858+00	f
+3246	The Winners	the winners | fredrik backman	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.735365+00	2026-10-11 15:56:56.806187+00	f
+3247	Beautiful	beautiful | christina lauren	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.738441+00	2026-10-11 15:56:56.806202+00	f
+3248	Fevered Star	fevered star | rebecca roanhorse	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.741726+00	2026-10-11 15:56:56.806216+00	f
+3249	Mirrored Heavens	mirrored heavens | rebecca roanhorse	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.817452+00	2026-10-11 15:56:56.806231+00	f
+2982	Fruit Fly	fruit fly | josh silver	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.627065+00	2026-10-11 15:10:16.627065+00	f
+3250	Home	home | nnedi okorafor	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.821654+00	2026-10-11 15:56:56.806246+00	f
+3251	The Night Masquerade	the night masquerade | nnedi okorafor	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.904737+00	2026-10-11 15:56:56.80626+00	f
+3252	Bird Box	bird box | josh malerman	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.90822+00	2026-10-11 15:56:56.806291+00	f
+2986	Stay Buried	stay buried | jennifer mcmahon	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.64963+00	2026-10-11 15:10:16.64963+00	f
+2987	Colt	colt | jessica peterson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.656853+00	2026-10-11 15:10:16.656853+00	f
+3253	Darius	darius | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.911691+00	2026-10-11 15:56:56.806327+00	f
+3254	Lover Eternal	lover eternal | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.914836+00	2026-10-11 15:56:56.806342+00	f
+3255	Lover Awakened	lover awakened | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.918046+00	2026-10-11 15:56:56.806357+00	f
+3256	Lover Revealed	lover revealed | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.921353+00	2026-10-11 15:56:56.806371+00	f
+3257	Lover Unbound	lover unbound | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.924457+00	2026-10-11 15:56:56.806385+00	f
+2993	Kiss Slay Replay	kiss slay replay | rachel harrison	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.692846+00	2026-10-11 15:10:16.692846+00	f
+3258	Lover Enshrined	lover enshrined | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.927506+00	2026-10-11 15:56:56.8064+00	f
+3259	Lover Avenged	lover avenged | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.930901+00	2026-10-11 15:56:56.806414+00	f
+3260	Lover Mine	lover mine | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.934654+00	2026-10-11 15:56:56.806428+00	f
+3261	Lover Unleashed	lover unleashed | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.937944+00	2026-10-11 15:56:56.806442+00	f
+3262	Lover Reborn	lover reborn | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:52.941408+00	2026-10-11 15:56:56.806456+00	f
+3263	Lover at Last	lover at last | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.944392+00	2026-10-11 15:56:56.80647+00	f
+3000	Keep Them Close	keep them close | david ellis	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.902251+00	2026-10-11 15:10:16.902251+00	f
+3264	The King	the king | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.947378+00	2026-10-11 15:56:56.806484+00	f
+3265	The Shadows	the shadows | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.950624+00	2026-10-11 15:56:56.806498+00	f
+3266	The Beast	the beast | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.953963+00	2026-10-11 15:56:56.806512+00	f
+3267	The Savior	the savior | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.957238+00	2026-10-11 15:56:56.806525+00	f
+3268	The Sinner	the sinner | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.961579+00	2026-10-11 15:56:56.80654+00	f
+3269	Lover Unveiled	lover unveiled | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.965233+00	2026-10-11 15:56:56.806554+00	f
+3270	Lover Arisen	lover arisen | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.968375+00	2026-10-11 15:56:56.806568+00	f
+3272	The Beloved	the beloved | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.977807+00	2026-10-11 15:56:56.806598+00	f
+3273	Lover Forbidden	lover forbidden | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:52.981206+00	2026-10-11 15:56:56.806627+00	f
+3011	The Women in White	the women in white | sarah pekkanen	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.014931+00	2026-10-11 15:10:17.014931+00	f
+3012	She's a Doll	she's a doll | barbara truelove	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.027492+00	2026-10-11 15:10:17.027492+00	f
+3274	Lover Enthroned	lover enthroned | j.r. ward	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.004828+00	2026-10-11 15:56:56.806642+00	f
+3275	Secrets in the Dark	secrets in the dark | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.008728+00	2026-10-11 15:56:56.806655+00	f
+3015	Fallow	fallow | sarah anderson	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.046548+00	2026-10-11 15:10:17.046548+00	f
+3016	Serenity Falls	serenity falls | c. j. tudor	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.050968+00	2026-10-11 15:10:17.050968+00	f
+3276	Whispers in the Mist	whispers in the mist | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.012646+00	2026-10-11 15:56:56.806669+00	f
+3277	Silence in the Shadows	silence in the shadows | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.016064+00	2026-10-11 15:56:56.806683+00	f
+3278	The Hunter	the hunter | l. j. shen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.019343+00	2026-10-11 15:56:56.806697+00	f
+3279	The Villain	the villain | l. j. shen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.022684+00	2026-10-11 15:56:56.80671+00	f
+3280	The Monster	the monster | l. j. shen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.025759+00	2026-10-11 15:56:56.806732+00	f
+3281	The Rake	the rake | l. j. shen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.028862+00	2026-10-11 15:56:56.806747+00	f
+3282	The Viscount Who Loved Me	the viscount who loved me | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.032338+00	2026-10-11 15:56:56.806761+00	f
+3283	An Offer From a Gentleman	an offer from a gentleman | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.104734+00	2026-10-11 15:56:56.806775+00	f
+3284	Romancing Mister Bridgerton	romancing mister bridgerton | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.109293+00	2026-10-11 15:56:56.806788+00	f
+3285	To Sir Phillip, With Love	to sir phillip, with love | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.113052+00	2026-10-11 15:56:56.806802+00	f
+3027	Shield of Sparrows	shield of sparrows | devney perry	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.364144+00	2026-10-11 15:10:17.364144+00	f
+3028	A Deal With the Elf King	a deal with the elf king | elise kova	\N	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.384193+00	2026-10-11 15:10:17.384193+00	f
+2286	The Watchers	the watchers | a. m. shine	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.085226+00	2026-10-11 15:10:17.4652+00	f
+2287	Every Last Fear	every last fear | alex finlay	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.185456+00	2026-10-11 15:10:17.468338+00	f
+2288	All Good People Here	all good people here | ashley flowers	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.365746+00	2026-10-11 15:10:17.468374+00	f
+2289	Iris Kelly Doesn't Date	iris kelly doesn't date | ashley herring blake	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.458892+00	2026-10-11 15:10:17.468387+00	f
+2290	The Switch	the switch | beth o'leary	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.471538+00	2026-10-11 15:10:17.468397+00	f
+2291	Dark Matter	dark matter | blake crouch	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.483822+00	2026-10-11 15:10:17.468407+00	f
+2292	The Taking of Annie Thorne	the taking of annie thorne | c. j. tudor	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.5621+00	2026-10-11 15:10:17.468416+00	f
+2293	The Trap	the trap | catherine ryan howard	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.666573+00	2026-10-11 15:10:17.468429+00	f
+2294	The Nothing Man	the nothing man | catherine ryan howard	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.757836+00	2026-10-11 15:10:17.468439+00	f
+2295	The Quiet Tenant	the quiet tenant | clemence michallon	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.777925+00	2026-10-11 15:10:17.468456+00	f
+2296	Mickey7	mickey7 | edward ashton	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.882861+00	2026-10-11 15:10:17.46847+00	f
+2297	Reckless	reckless | elsie silver	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:45.97831+00	2026-10-11 15:10:17.468483+00	f
+2298	Powerless	powerless | elsie silver	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.063159+00	2026-10-11 15:10:17.468493+00	f
+2299	The Room	the room | emma donoghue	2010	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.085775+00	2026-10-11 15:10:17.468508+00	f
+2300	The Inmate	the inmate | freida mcfadden	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.166103+00	2026-10-11 15:10:17.468519+00	f
+2301	The Boyfriend	the boyfriend | freida mcfadden	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.176922+00	2026-10-11 15:10:17.468529+00	f
+2302	Never Lie	never lie | freida mcfadden	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.187347+00	2026-10-11 15:10:17.46854+00	f
+2303	Next of Kin	next of kin | hannah bonam-young	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.262373+00	2026-10-11 15:10:17.46855+00	f
+2304	Good Girl, Bad Blood	good girl, bad blood | holly jackson	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.359648+00	2026-10-11 15:10:17.468559+00	f
+2305	As Good as Dead	as good as dead | holly jackson	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.373033+00	2026-10-11 15:10:17.468568+00	f
+2306	Lifelike	lifelike | jay kristoff	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.384209+00	2026-10-11 15:10:17.468579+00	f
+2307	Things We Do In the Dark	things we do in the dark | jennifer hillier	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.46758+00	2026-10-11 15:10:17.468591+00	f
+2308	Keep it in the Family	keep it in the family | john marrs	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.484903+00	2026-10-11 15:10:17.468617+00	f
+2309	What Lies Between Us	what lies between us | john marrs	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.559574+00	2026-10-11 15:10:17.468628+00	f
+2310	When You Disappeared	when you disappeared | john marrs	2013	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.570637+00	2026-10-11 15:10:17.468638+00	f
+2311	The New Wife	the new wife | j. p. delaney	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.669763+00	2026-10-11 15:10:17.468653+00	f
+2312	Leave Me Behind	leave me behind | k.m. moronova	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.760862+00	2026-10-11 15:10:17.468664+00	f
+2313	The Ministry of Time	the ministry of time | kaliane bradley	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.774006+00	2026-10-11 15:10:17.468674+00	f
+2314	You, Again	you, again | kate goldbeck	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.861886+00	2026-10-11 15:10:17.468686+00	f
+2315	Phantasma	phantasma | kaylie smith	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.875369+00	2026-10-11 15:10:17.468697+00	f
+2316	Nocticadia	nocticadia | keri lake	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.887954+00	2026-10-11 15:10:17.468707+00	f
+2317	End of Story	end of story | louise swanson	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.97153+00	2026-10-11 15:10:17.468719+00	f
+2318	The Paris Apartment	the paris apartment | lucy foley	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:46.982319+00	2026-10-11 15:10:17.468728+00	f
+2319	All Rhodes Lead Here	all rhodes lead here | mariana zapata	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.062855+00	2026-10-11 15:10:17.468738+00	f
+2320	The Psychopath Next Door	the psychopath next door | mark edwards	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.074862+00	2026-10-11 15:10:17.468747+00	f
+2321	Local Woman Missing	local woman missing | mary kubica	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.155733+00	2026-10-11 15:10:17.468757+00	f
+2322	A Brush With Love	a brush with love | mazey eddings	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.168788+00	2026-10-11 15:10:17.468766+00	f
+2323	Till Summer Do Us Part	till summer do us part | meghan quinn	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.182834+00	2026-10-11 15:10:17.468776+00	f
+2324	Don't Eat the Pie	don't eat the pie | monique asher	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.277568+00	2026-10-11 15:10:17.468787+00	f
+2325	Chain-Gang All-Stars	chain-gang all-stars | nana kwame adjei-brenyah	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.366431+00	2026-10-11 15:10:17.468797+00	f
+2326	Don't Let Her Stay	don't let her stay | nicola sanders	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.380608+00	2026-10-11 15:10:17.468807+00	f
+2327	Business or Pleasure	business or pleasure | rachel lynn solomon	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.569123+00	2026-10-11 15:10:17.46882+00	f
+2328	The It Girl	the it girl | ruth ware	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.670259+00	2026-10-11 15:10:17.46883+00	f
+2329	Happy Medium	happy medium | sarah adler	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.761122+00	2026-10-11 15:10:17.468841+00	f
+2330	Alchemised	alchemised | senlinyu	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.786461+00	2026-10-11 15:10:17.468852+00	f
+2331	Brutal Prince	brutal prince | sophie lark	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:47.87685+00	2026-10-11 15:10:17.468863+00	f
+2332	Firestarter	firestarter | stephen king	1980	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.172923+00	2026-10-11 15:10:17.468882+00	f
+2333	Seven Deaths of Evelyn Hardcastle	seven deaths of evelyn hardcastle | stuart turton	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.274208+00	2026-10-11 15:10:17.468892+00	f
+2334	Only Human	only human | sylvain neuvel	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.28468+00	2026-10-11 15:10:17.468901+00	f
+2335	Waking Gods	waking gods | sylvain neuvel	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.376981+00	2026-10-11 15:10:17.468909+00	f
+2336	The Twisted Ones	the twisted ones | t. kingfisher	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.459452+00	2026-10-11 15:10:17.468918+00	f
+2337	Savor It	savor it | tarah dewitt	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.482147+00	2026-10-11 15:10:17.468928+00	f
+2338	Bury Our Bones in the Midnight Soil	bury our bones in the midnight soil | v. e. schwab	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.563786+00	2026-10-11 15:10:17.468937+00	f
+2339	We Spread	we spread | iain reid	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.579144+00	2026-10-11 15:10:17.468945+00	f
+2340	Dungeon Crawler Carl	dungeon crawler carl | matt dinniman	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:48.784022+00	2026-10-11 15:10:17.46896+00	f
+2341	Still Beating	still beating | jennifer hartmann	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.075444+00	2026-10-11 15:10:17.468976+00	f
+2342	Ready or Not	ready or not | cara bastone	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.379122+00	2026-10-11 15:10:17.468997+00	f
+2343	The Housemaid Is Watching	the housemaid is watching | freida mcfadden	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.465339+00	2026-10-11 15:10:17.469007+00	f
+2344	Ex Vows	ex vows | jessica joyce	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.483561+00	2026-10-11 15:10:17.469017+00	f
+2345	Next to You	next to you | hannah bonam-young	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.572679+00	2026-10-11 15:10:17.469026+00	f
+2346	The Fake Out	the fake out | stephanie archer	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.603413+00	2026-10-11 15:10:17.469035+00	f
+2347	The Wingman	the wingman | stephanie archer	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.66621+00	2026-10-11 15:10:17.469043+00	f
+2348	Revolve	revolve | bal khabra	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.725646+00	2026-10-11 15:10:17.469053+00	f
+2349	Fall I Want	fall i want | lyra parish	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.764462+00	2026-10-11 15:10:17.469063+00	f
+2350	Praise	praise | sara cate	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:49.971007+00	2026-10-11 15:10:17.469079+00	f
+2351	Hopeless	hopeless | elsie silver	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.058183+00	2026-10-11 15:10:17.469088+00	f
+2352	King of Pride	king of pride | ana huang	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.272023+00	2026-10-11 15:10:17.469101+00	f
+2353	King of Greed	king of greed | ana huang	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.364714+00	2026-10-11 15:10:17.46911+00	f
+2354	The Christmas Tree Farm	the christmas tree farm | laurie gilmore	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.381717+00	2026-10-11 15:10:17.469118+00	f
+2355	Blood Over Bright Haven	blood over bright haven | m. l. wang	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.468731+00	2026-10-11 15:10:17.469128+00	f
+2356	Willing Prey	willing prey | allie oleander	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.66103+00	2026-10-11 15:10:17.469141+00	f
+2357	Daddy Issues	daddy issues | kate goldbeck	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.673102+00	2026-10-11 15:10:17.46915+00	f
+2358	Count My Lies	count my lies | sophie stava	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.687683+00	2026-10-11 15:10:17.46916+00	f
+2359	Haunting the Hunter	haunting the hunter | hanna harp	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.774179+00	2026-10-11 15:10:17.469171+00	f
+2360	Furybound	furybound | sable sorensen	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.85978+00	2026-10-11 15:10:17.46918+00	f
+2361	The Deep	the deep | nick cutter	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.873126+00	2026-10-11 15:10:17.469188+00	f
+2362	What Happens in Amsterdam	what happens in amsterdam | rachel lynn solomon	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.965082+00	2026-10-11 15:10:17.469197+00	f
+2363	The Wild Card	the wild card | stephanie archer	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:50.976612+00	2026-10-11 15:10:17.469206+00	f
+2364	Gloves Off	gloves off | stephanie archer	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.060242+00	2026-10-11 15:10:17.469216+00	f
+2365	Broken Dove	broken dove | dani francis	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.269336+00	2026-10-11 15:10:17.469231+00	f
+2366	Dear Reader	dear reader | tate james	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.28246+00	2026-10-11 15:10:17.469241+00	f
+2367	Great Big Beautiful Life	great big beautiful life | emily henry	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.361307+00	2026-10-11 15:10:17.469249+00	f
+2368	Rook & Rebel	rook & rebel | kate crew	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.375203+00	2026-10-11 15:10:17.471367+00	f
+2369	Good Girls Don't Die	good girls don't die | christina henry	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.385658+00	2026-10-11 15:10:17.471405+00	f
+2370	Just for the Summer	just for the summer | abby jimenez	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.466148+00	2026-10-11 15:10:17.471417+00	f
+2371	Black Sheep	black sheep | rachel harrison	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.561179+00	2026-10-11 15:10:17.471427+00	f
+2372	Embrace	embrace | bal khabra	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.577153+00	2026-10-11 15:10:17.471436+00	f
+2373	Don't Let Him In	don't let him in | lisa jewell	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.755778+00	2026-10-11 15:10:17.471447+00	f
+2374	Daggermouth	daggermouth | h. m. wolfe	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.775683+00	2026-10-11 15:10:17.471459+00	f
+2375	Into the Fading Twilight	into the fading twilight | catherine cowles	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.86281+00	2026-10-11 15:10:17.471468+00	f
+2376	Harvest Season	harvest season | brynne weaver	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.963073+00	2026-10-11 15:10:17.471479+00	f
+2377	Prince of Swords	prince of swords | elise kova	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:51.974534+00	2026-10-11 15:10:17.471488+00	f
+2378	Any Man	any man | amber tambglyn	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.074125+00	2026-10-11 15:10:17.4715+00	f
+2379	Insatiable	insatiable | leigh rivers	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.255793+00	2026-10-11 15:10:17.471512+00	f
+2380	The Divorce	the divorce | freida mcfadden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.269779+00	2026-10-11 15:10:17.47152+00	f
+2381	A Court of Thorns and Roses	a court of thorns and roses | sarah j. maas	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.358317+00	2026-10-11 15:10:17.471529+00	f
+2382	Bulletproof	bulletproof | k.m. moronova	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.374032+00	2026-10-11 15:10:17.471538+00	f
+2383	The Night We Met	the night we met | abby jimenez	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.455695+00	2026-10-11 15:10:17.471547+00	f
+2384	Bourbon & Lies	bourbon & lies | victoria wilder	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.558419+00	2026-10-11 15:10:17.471558+00	f
+2385	There Is No Antimimetics Division	there is no antimimetics division | qntm	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.66969+00	2026-10-11 15:10:17.471571+00	f
+2386	Free Falling	free falling | lyla sage	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.759479+00	2026-10-11 15:10:17.47158+00	f
+2387	Bonfire and Bliss Bookstore	bonfire and bliss bookstore | brittanee nicole	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.773841+00	2026-10-11 15:10:17.47159+00	f
+2388	They Know If You've Been Bad or Good	they know if you've been bad or good | alta hensley	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.858294+00	2026-10-11 15:10:17.471599+00	f
+2389	Bourbon & Proof	bourbon & proof | victoria wilder	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.961087+00	2026-10-11 15:10:17.471611+00	f
+2390	Little Stranger	little stranger | leigh rivers	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.972079+00	2026-10-11 15:10:17.471619+00	f
+2391	Little Liar	little liar | leigh rivers	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:52.98323+00	2026-10-11 15:10:17.471628+00	f
+2392	Extracurricular	extracurricular | rachel lynn solomon	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:53.062768+00	2026-10-11 15:10:17.471637+00	f
+2394	Victorious	victorious | v. e. schwab	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:09:53.084664+00	2026-10-11 15:10:17.471654+00	f
+2395	Lock Every Door	lock every door | riley sager	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:53.369438+00	2026-10-11 15:10:17.471673+00	f
+2396	Never Never	never never | colleen hoover; tarryn fisher	2015	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:56.468077+00	2026-10-11 15:10:17.471783+00	f
+2398	City of Bones	city of bones | cassandra clare	2007	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:59.962057+00	2026-10-11 15:10:17.471923+00	f
+2399	City of Ashes	city of ashes | cassandra clare	2008	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:09:59.973482+00	2026-10-11 15:10:17.471933+00	f
+2400	Dark Places	dark places | gillian flynn	2009	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:00.075785+00	2026-10-11 15:10:17.471946+00	f
+2401	Insatiable	insatiable | meg cabot	2010	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:00.663761+00	2026-10-11 15:10:17.471973+00	f
+2402	Verity	verity | colleen hoover	2018	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:01.673027+00	2026-10-11 15:10:17.473331+00	f
+2403	The Dark Forest	the dark forest | liu cixin	2008	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:01.762952+00	2026-10-11 15:10:17.473349+00	f
+2404	The Bromance Book Club	the bromance book club | lyssa kay adams	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:01.879219+00	2026-10-11 15:10:17.473365+00	f
+2405	Die Again	die again | tess gerritsen	2014	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:02.863658+00	2026-10-11 15:10:17.473394+00	f
+2406	Too Late	too late | colleen hoover	2016	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:03.264953+00	2026-10-11 15:10:17.473413+00	f
+2407	Frankenstein	frankenstein | marry shelly	1818	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:03.865315+00	2026-10-11 15:10:17.473441+00	f
+2408	The Elite	the elite | kiera cass	2013	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:03.962863+00	2026-10-11 15:10:17.473452+00	f
+2409	The Selection	the selection | kiera cass	2012	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:03.974517+00	2026-10-11 15:10:17.473461+00	f
+2410	Always and Forever, Lara Jean	always and forever, lara jean | jenny han	2017	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:04.055771+00	2026-10-11 15:10:17.473472+00	f
+2411	The Sinner	the sinner | tess gerritsen	2003	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.078168+00	2026-10-11 15:10:17.473482+00	f
+2412	The Silent Girl	the silent girl | tess gerritsen	2011	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.165322+00	2026-10-11 15:10:17.47349+00	f
+2413	November 9	november 9 | colleen hoover	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.369867+00	2026-10-11 15:10:17.47351+00	f
+2414	Haunted	haunted | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.38323+00	2026-10-11 15:10:17.473519+00	f
+2415	The Dead Lifeguard	the dead lifeguard | r. l. stine	1996	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.475846+00	2026-10-11 15:10:17.473528+00	f
+2416	The Prom Queen	the prom queen | r. l. stine	1992	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.488842+00	2026-10-11 15:10:17.473537+00	f
+2417	All-Night Party	all-night party | r. l. stine	1996	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.561337+00	2026-10-11 15:10:17.475299+00	f
+2418	Sunburn	sunburn | r. l. stine	1992	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.57615+00	2026-10-11 15:10:17.475318+00	f
+2419	The Face	the face | r. l. stine	1994	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.662035+00	2026-10-11 15:10:17.475328+00	f
+2420	Locker 13	locker 13 | r. l. stine	2000	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.673956+00	2026-10-11 15:10:17.475337+00	f
+2421	They Call Me Creature	they call me creature | r. l. stine	2001	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.760732+00	2026-10-11 15:10:17.475346+00	f
+2422	The Fire Game	the fire game | r. l. stine	1991	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.774963+00	2026-10-11 15:10:17.475355+00	f
+2423	Double Date	double date | r. l. stine	1993	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:04.975822+00	2026-10-11 15:10:17.475373+00	f
+2424	The Wrong Number	the wrong number | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.067738+00	2026-10-11 15:10:17.475382+00	f
+2425	Cat	cat | r. l. stine	1996	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.158861+00	2026-10-11 15:10:17.475391+00	f
+2426	Don't Forget Me!	don't forget me! | r. l. stine	2000	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.272516+00	2026-10-11 15:10:17.475406+00	f
+2427	My Name is Evil	my name is evil | r. l. stine	2000	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.284076+00	2026-10-11 15:10:17.475415+00	f
+2428	The Surprise Party	the surprise party | r. l. stine	1989	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.36202+00	2026-10-11 15:10:17.475424+00	f
+2429	The Hunting Party	the hunting party | lucy foley	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:05.8746+00	2026-10-11 15:10:17.475452+00	f
+2430	Wilder Girls	wilder girls | rory power	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:05.976216+00	2026-10-11 15:10:17.475466+00	f
+2431	The Turn of the Key	the turn of the key | ruth ware	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.061947+00	2026-10-11 15:10:17.475476+00	f
+2432	Ready Player One	ready player one | ernest cline	2011	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.076373+00	2026-10-11 15:10:17.475486+00	f
+2433	The Sun is Also a Star	the sun is also a star | nicola yoon	2016	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.162031+00	2026-10-11 15:10:17.475497+00	f
+2434	3096 Days	3096 days | natascha kampusch	2010	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:06.475225+00	2026-10-11 15:10:17.475518+00	f
+2435	An Anonymous Girl	an anonymous girl | greer hendricks; sarah pekkanen	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:06.775817+00	2026-10-11 15:10:17.475533+00	f
+2436	Hollow City	hollow city | ransom riggs	2014	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:07.167363+00	2026-10-11 15:10:17.47555+00	f
+2437	Brain on Fire	brain on fire | susannah cahalan	2012	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:07.473024+00	2026-10-11 15:10:17.475569+00	f
+2438	The Three-Body Problem	the three-body problem | liu cixin	2006	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:07.568534+00	2026-10-11 15:10:17.47558+00	f
+2439	Fight Club	fight club | chuck palahniuk	1996	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:08.265656+00	2026-10-11 15:10:17.475609+00	f
+2441	The Last Time I Lied	the last time i lied | riley sager	2018	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:09.179602+00	2026-10-11 15:10:17.475652+00	f
+2442	The Chain	the chain | adrian mckinty	2019	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:09.466665+00	2026-10-11 15:10:17.475667+00	f
+2443	Final Girls	final girls | riley sager	2017	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:09.960795+00	2026-10-11 15:10:17.475684+00	f
+2444	The Chosen	the chosen | j.r. ward	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.159708+00	2026-10-11 15:10:17.475696+00	f
+2445	The Thief	the thief | j.r. ward	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.17695+00	2026-10-11 15:10:17.475705+00	f
+2446	The Declaration	the declaration | gemma malley	2007	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:10.574166+00	2026-10-11 15:10:17.475725+00	f
+2447	Rapture	rapture | j.r. ward	2012	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.661722+00	2026-10-11 15:10:17.475733+00	f
+2448	Immortal	immortal | j.r. ward	2013	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.676945+00	2026-10-11 15:10:17.475743+00	f
+2449	Halloween Party	halloween party | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.855713+00	2026-10-11 15:10:17.475756+00	f
+2450	The Sleepwalker	the sleepwalker | r. l. stine	1990	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.869311+00	2026-10-11 15:10:17.475765+00	f
+2451	Bad Dreams	bad dreams | r. l. stine	1993	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.882123+00	2026-10-11 15:10:17.475774+00	f
+2452	Lights Out	lights out | r. l. stine	1991	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:10.962674+00	2026-10-11 15:10:17.475784+00	f
+2453	Bag of Bones	bag of bones | stephen king	1998	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.072689+00	2026-10-11 15:10:17.475797+00	f
+2454	Gone Girl	gone girl | gillian flynn	2012	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:11.08408+00	2026-10-11 15:10:17.475806+00	f
+2455	Into the Dark	into the dark | r. l. stine	1997	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.259803+00	2026-10-11 15:10:17.475818+00	f
+2456	Marked	marked | p. c. cast	2007	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.292749+00	2026-10-11 15:10:17.475829+00	f
+2457	Burned	burned | p. c. cast	2010	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.370591+00	2026-10-11 15:10:17.475838+00	f
+2458	Lolita	lolita | vladimir nabokov	1955	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.463391+00	2026-10-11 15:10:17.475848+00	f
+2459	Little Black Lies	little black lies | sharon bolton	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:11.568205+00	2026-10-11 15:10:17.47586+00	f
+2460	Sometimes I Lie	sometimes i lie | alice feeney	2017	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:11.975395+00	2026-10-11 15:10:17.475881+00	f
+2461	You	you | caroline kepnes	2014	\N	\N	\N	\N	\N	\N	f	f	t	2026-10-11 15:10:12.274031+00	2026-10-11 15:10:17.475899+00	f
+2463	Honey	honey | imani thompson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.658431+00	2026-10-11 15:10:17.475923+00	f
+2464	The Wax Child	the wax child | olga ravn	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.672886+00	2026-10-11 15:10:17.475932+00	f
+2465	The Creeper	the creeper | a. m. shine	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.758871+00	2026-10-11 15:10:17.475941+00	f
+2467	Part of Your World	part of your world | abby jimenez	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.770592+00	2026-10-11 15:10:17.475956+00	f
+2470	The Ascent	the ascent | adam plantinga	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.798+00	2026-10-11 15:10:17.475982+00	f
+2471	The Compound	the compound | aisling rawle	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.806973+00	2026-10-11 15:10:17.475993+00	f
+2475	Truly, Madly, Deeply	truly, madly, deeply | alexandria bellefleur	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.842602+00	2026-10-11 15:10:17.476027+00	f
+2476	Battle of the Bookstores	battle of the bookstores | ali brady	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.849477+00	2026-10-11 15:10:17.476037+00	f
+2477	Bound	bound | ali hazelwood	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.860126+00	2026-10-11 15:10:17.476047+00	f
+2478	Hot for Slayer	hot for slayer | ali hazelwood	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.864778+00	2026-10-11 15:10:17.476055+00	f
+2481	Every Step She Takes	every step she takes | alison cochrun	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.883593+00	2026-10-11 15:10:17.476076+00	f
+2482	The Charm Offensive	the charm offensive | alison cochrun	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.890246+00	2026-10-11 15:10:17.476085+00	f
+2484	Shiver	shiver | allie reynolds	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.906311+00	2026-10-11 15:10:17.476104+00	f
+2486	One of Us Knows	one of us knows | alyssa cole	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.91757+00	2026-10-11 15:10:17.476119+00	f
+2487	You're Invited	you're invited | amanda jayatissa	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.926955+00	2026-10-11 15:10:17.476129+00	f
+2488	Any Man	any man | amber tamblyn	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.936343+00	2026-10-11 15:10:17.476141+00	f
+2489	Haven't Killed in Years	haven't killed in years | amy k. green	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.943446+00	2026-10-11 15:10:17.476151+00	f
+2493	With Stars in Her Eyes	with stars in her eyes | andie burke	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.966626+00	2026-10-11 15:10:17.476178+00	f
+2494	Fall for Him	fall for him | andie burke	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.973669+00	2026-10-11 15:10:17.476188+00	f
+2495	The Spare Room	the spare room | andrea bartz	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:12.980478+00	2026-10-11 15:10:17.476198+00	f
+2498	Just a Taste	just a taste | anise starre	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.005704+00	2026-10-11 15:10:17.476223+00	f
+2499	Crash Landing	crash landing | annie mcquaid	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.013034+00	2026-10-11 15:10:17.476232+00	f
+2500	Conform	conform | ariel sullivan	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.020432+00	2026-10-11 15:10:17.476243+00	f
+2502	This Book Will Bury Me	this book will bury me | ashley winstead	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.032841+00	2026-10-11 15:10:17.476258+00	f
+2505	Call the Coroner	call the coroner | avril ashton	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.059294+00	2026-10-11 15:10:17.478339+00	f
+2506	I, Medusa	i, medusa | ayana gray	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.067212+00	2026-10-11 15:10:17.478354+00	f
+2513	Swept Away	swept away | beth o'leary	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.157373+00	2026-10-11 15:10:17.478404+00	f
+2517	The Irresistible Urge to Fall for Your Enemy	the irresistible urge to fall for your enemy | brigitte knightley	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.192675+00	2026-10-11 15:10:17.478438+00	f
+2528	Bad Tourists	bad tourists | caro carver	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.314096+00	2026-10-11 15:10:17.478518+00	f
+2532	Every Time I Go On Vacation, Someone Dies	every time i go on vacation, someone dies | catherine mack	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.344556+00	2026-10-11 15:10:17.478549+00	f
+2533	Run Time	run time | catherine ryan howard	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.354895+00	2026-10-11 15:10:17.478561+00	f
+2534	Burn After Reading	burn after reading | catherine ryan howard	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.361728+00	2026-10-11 15:10:17.47857+00	f
+2535	Look in the Mirror	look in the mirror | catherine steadman	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.366711+00	2026-10-11 15:10:17.478579+00	f
+2538	Wild Dark Shore	wild dark shore | charlotte mcconaghy	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.38921+00	2026-10-11 15:10:17.478603+00	f
+2541	The Hitchhikers	the hitchhikers | chevy stevens	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.411192+00	2026-10-11 15:10:17.478628+00	f
+2542	The Darkest Deep	the darkest deep | chris butera	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.418051+00	2026-10-11 15:10:17.478638+00	f
+2543	The Place Where They Buried Your Heart	the place where they buried your heart | christina henry	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.427432+00	2026-10-11 15:10:17.478649+00	f
+2546	Lucky Day	lucky day | chuck tingle	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.44666+00	2026-10-11 15:10:17.478669+00	f
+2547	The Romantic Agenda	the romantic agenda | claire kann	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.45596+00	2026-10-11 15:10:17.47868+00	f
+2548	The Marriage Narrative	the marriage narrative | claire kann	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.460508+00	2026-10-11 15:10:17.478689+00	f
+2555	The Sweetest Oblivion	the sweetest oblivion | danielle lori	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.507556+00	2026-10-11 15:10:17.478738+00	f
+2556	The Dead Husband Cookbook	the dead husband cookbook | danielle valentine	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.514165+00	2026-10-11 15:10:17.478748+00	f
+2557	Night Watcher	night watcher | daphne woolsoncroft	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.521029+00	2026-10-11 15:10:17.478759+00	f
+2558	Where He Can't Find You	where he can't find you | darcy coates	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.527862+00	2026-10-11 15:10:17.478768+00	f
+2559	Parasite	parasite | darcy coates	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.534363+00	2026-10-11 15:10:17.478778+00	f
+2560	How Bad Things Can Get	how bad things can get | darcy coates	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.539136+00	2026-10-11 15:10:17.478786+00	f
+2568	It Will Only Hurt For a Moment	it will only hurt for a moment | delilah s. dawson	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.588729+00	2026-10-11 15:10:17.478838+00	f
+2569	House of Idyll	house of idyll | delilah s. dawson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.593356+00	2026-10-11 15:10:17.478848+00	f
+2574	Wild Love	wild love | elsie silver	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.631053+00	2026-10-11 15:10:17.478889+00	f
+2578	This Girl's a Killer	this girl's a killer | emma c. wells	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.661566+00	2026-10-11 15:10:17.47892+00	f
+2587	Famous Last Words	famous last words | gillian mcallister	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.72215+00	2026-10-11 15:10:17.478985+00	f
+2590	BadAsstronauts	badasstronauts | grady hendrix	2012	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.739871+00	2026-10-11 15:10:17.479006+00	f
+2592	The Haunting of Velkwood	the haunting of velkwood | gwendolyn kiste	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.750729+00	2026-10-11 15:10:17.479021+00	f
+2593	Haunting Adeline	haunting adeline | h.d. carlton	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.757361+00	2026-10-11 15:10:17.479031+00	f
+2594	The Snowball Effect	the snowball effect | haley cass	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.76239+00	2026-10-11 15:10:17.479039+00	f
+2600	Leech	leech | hiron ennes	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.81406+00	2026-10-11 15:10:17.481358+00	f
+2603	Behind a Closed Door	behind a closed door | j.d. barker	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.840106+00	2026-10-11 15:10:17.481395+00	f
+2607	The Will of the Many	the will of the many | james islington	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.866392+00	2026-10-11 15:10:17.481428+00	f
+2609	What Kind of Paradise	what kind of paradise | janelle brown	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.877252+00	2026-10-11 15:10:17.481444+00	f
+2613	Haunted Ever After	haunted ever after | jen deluca	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:13.908554+00	2026-10-11 15:10:17.48148+00	f
+2626	Give Me Butterflies	give me butterflies | jillian meadows	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.015211+00	2026-10-11 15:10:17.481572+00	f
+2627	An Academic Affair	an academic affair | jodi mcalister	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.023099+00	2026-10-11 15:10:17.481583+00	f
+2629	The Stranger in Her House	the stranger in her house | john marrs	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.045523+00	2026-10-11 15:10:17.481599+00	f
+2630	The Family Experiment	the family experiment | john marrs	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.052663+00	2026-10-11 15:10:17.481609+00	f
+2631	The Marriage Act	the marriage act | john marrs	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.061089+00	2026-10-11 15:10:17.48162+00	f
+2634	Heads Will Roll	heads will roll | josh winning	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.081116+00	2026-10-11 15:10:17.481643+00	f
+2635	It's Different This Time	it's different this time | joss richard	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.08796+00	2026-10-11 15:10:17.481653+00	f
+2639	Running Wild	running wild | k. a. tucker	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.119088+00	2026-10-11 15:10:17.481686+00	f
+2640	Dead Space	dead space | kali wallace	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.12799+00	2026-10-11 15:10:17.481697+00	f
+2641	Penance	penance | kanae minato	2009	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.132836+00	2026-10-11 15:10:17.481706+00	f
+2643	Grave Matter	grave matter | karina halle	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.15088+00	2026-10-11 15:10:17.481725+00	f
+2645	In Good Company	in good company | kat singleton	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.166604+00	2026-10-11 15:10:17.481742+00	f
+2646	A Killing Cold	a killing cold | kate alice marshall	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.173326+00	2026-10-11 15:10:17.481752+00	f
+2655	Kin	kin | kealan patrick burke	2011	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.249028+00	2026-10-11 15:10:17.481826+00	f
+2657	All That We See or Seem	all that we see or seem | ken liu	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.263002+00	2026-10-11 15:10:17.481845+00	f
+2661	The Nature of Disappearing	the nature of disappearing | kimi cunningham grant	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.291049+00	2026-10-11 15:10:17.481876+00	f
+2662	Battle Royale	battle royale | koushun takami	1999	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.297879+00	2026-10-11 15:10:17.481886+00	f
+2664	How To Solve Your Own Murder	how to solve your own murder | kristen perrin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.311511+00	2026-10-11 15:10:17.481904+00	f
+2665	The Neighbor Favor	the neighbor favor | kristina forest	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.320463+00	2026-10-11 15:10:17.481916+00	f
+2666	The Partner Plot	the partner plot | kristina forest	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.325002+00	2026-10-11 15:10:17.481925+00	f
+2667	Because You're Mine	because you're mine | kristopher triana	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.329571+00	2026-10-11 15:10:17.481934+00	f
+2668	The Game Changer	the game changer | lana ferguson	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.334526+00	2026-10-11 15:10:17.481943+00	f
+2669	The Mating Game	the mating game | lana ferguson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.343365+00	2026-10-11 15:10:17.481954+00	f
+2670	When the Reckoning Comes	when the reckoning comes | latanya mcqueen	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.349584+00	2026-10-11 15:10:17.481964+00	f
+2672	One-Star Romance	one-star romance | laura hankin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.36456+00	2026-10-11 15:10:17.481982+00	f
+2673	The Day of the Door	the day of the door | laurel hightower	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.368854+00	2026-10-11 15:10:17.48199+00	f
+2674	The Last Room on the Left	the last room on the left | leah konen	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.377302+00	2026-10-11 15:10:17.482001+00	f
+2675	Guestbook	guestbook | leanne shapton	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.386026+00	2026-10-11 15:10:17.482013+00	f
+2676	One Yellow Eye	one yellow eye | leigh radford	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.392836+00	2026-10-11 15:10:17.482023+00	f
+2677	If You're Seeing This, It's Meant For You	if you're seeing this, it's meant for you | leigh stein	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.405825+00	2026-10-11 15:10:17.482036+00	f
+2678	Under the Same Stars	under the same stars | libba bray	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.412538+00	2026-10-11 15:10:17.482046+00	f
+2679	Three Swedish Mountain Men	three swedish mountain men | lily gold	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.422425+00	2026-10-11 15:10:17.482057+00	f
+2680	Vampires at Sea	vampires at sea | lindsay merbaum	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.4291+00	2026-10-11 15:10:17.482066+00	f
+2681	Christmas Fling	christmas fling | lindsey kelk	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.436191+00	2026-10-11 15:10:17.482076+00	f
+2682	Adrift	adrift | lisa brideau	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.442451+00	2026-10-11 15:10:17.483307+00	f
+2683	Watching You	watching you | lisa jewell	2018	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.450824+00	2026-10-11 15:10:17.483325+00	f
+2684	Invisible Girl	invisible girl | lisa jewell	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.455757+00	2026-10-11 15:10:17.483335+00	f
+2685	First Light	first light | liz kerin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.460559+00	2026-10-11 15:10:17.483343+00	f
+2686	The God of the Woods	the god of the woods | liz moore	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.468011+00	2026-10-11 15:10:17.483354+00	f
+2687	Saving Noah	saving noah | lucinda berry	2017	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.477467+00	2026-10-11 15:10:17.483365+00	f
+2688	The Surf House	the surf house | lucy clarke	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.484356+00	2026-10-11 15:10:17.483375+00	f
+2689	The Midnight Feast	the midnight feast | lucy foley	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.49067+00	2026-10-11 15:10:17.483386+00	f
+2690	Thirsty	thirsty | lucy lehane	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.497684+00	2026-10-11 15:10:17.483396+00	f
+2691	Story of My Life	story of my life | lucy score	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.504646+00	2026-10-11 15:10:17.483407+00	f
+2692	Love in Focus	love in focus | lyla lee	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.511407+00	2026-10-11 15:10:17.483417+00	f
+2693	A Very Merry Bromance	a very merry bromance | lyssa kay adams	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.517971+00	2026-10-11 15:10:17.483427+00	f
+2694	Glass Houses	glass houses | madeline ashby	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.526781+00	2026-10-11 15:10:17.483438+00	f
+2695	Breaking Point	breaking point | mads rafferty	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.533177+00	2026-10-11 15:10:17.483449+00	f
+2696	Dust Storm	dust storm | maggie c. gates	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.539646+00	2026-10-11 15:10:17.483459+00	f
+2697	The Ripple Effect	the ripple effect | maggie north	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.546769+00	2026-10-11 15:10:17.483468+00	f
+2698	Blob	blob | maggie su	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.553687+00	2026-10-11 15:10:17.483478+00	f
+2699	The Summer I Ate the Rich	the summer i ate the rich | maika moulite; maritza moulite	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.565034+00	2026-10-11 15:10:17.48349+00	f
+2701	Red City	red city | marie lu	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.576195+00	2026-10-11 15:10:17.483505+00	f
+2704	The World Gives Way	the world gives way | marissa levien	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.6015+00	2026-10-11 15:10:17.483531+00	f
+2708	William	william | mason coile	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.6299+00	2026-10-11 15:10:17.48356+00	f
+2709	The Build-a-Boyfriend Project	the build-a-boyfriend project | mason deaver	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.636852+00	2026-10-11 15:10:17.48357+00	f
+2712	Grace & Henry's Holiday Movie Marathon	grace & henry's holiday movie marathon | matthew norman	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.666229+00	2026-10-11 15:10:17.483596+00	f
+2715	Well, Actually	well, actually | mazey eddings	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.683992+00	2026-10-11 15:10:17.483621+00	f
+2716	The Mad Wife	the mad wife | meagan church	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.69135+00	2026-10-11 15:10:17.483632+00	f
+2725	Mary	mary | nat cassidy	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.763774+00	2026-10-11 15:10:17.483713+00	f
+2730	The Poppy Fields	the poppy fields | nikki erlick	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.802428+00	2026-10-11 15:10:17.483759+00	f
+2731	The Measure	the measure | nikki erlick	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.809129+00	2026-10-11 15:10:17.48377+00	f
+2732	Such Quiet Girls	such quiet girls | noelle w. ihli	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.81616+00	2026-10-11 15:10:17.483781+00	f
+2736	Sea of Ruin	sea of ruin | pam godwin	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.846918+00	2026-10-11 15:10:17.483849+00	f
+2740	25 Days	25 days | per jacobsen	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.875156+00	2026-10-11 15:10:17.483886+00	f
+2741	Unsteady	unsteady | peyton corinne	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.881637+00	2026-10-11 15:10:17.483898+00	f
+2742	The Autumn Springs Retirement Home Massacre	the autumn springs retirement home massacre | philip fracassi	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.890907+00	2026-10-11 15:10:17.483909+00	f
+2746	Fallen Gods	fallen gods | rachel van dyken	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.960496+00	2026-10-11 15:10:17.483958+00	f
+2747	How I'll Kill You	how i'll kill you | ren destefano	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.967462+00	2026-10-11 15:10:17.483969+00	f
+2748	The Impossible Fortune	the impossible fortune | richard osman	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.974999+00	2026-10-11 15:10:17.48398+00	f
+2749	The Romance Recipe	the romance recipe | ruby barrett	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:14.990907+00	2026-10-11 15:10:17.483996+00	f
+2754	Cold Eternity	cold eternity | s. a. barnes	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.020841+00	2026-10-11 15:10:17.484035+00	f
+2755	Ghost Station	ghost station | s. a. barnes	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.027777+00	2026-10-11 15:10:17.484047+00	f
+2757	Darling Girls	darling girls | sally hepworth	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.039605+00	2026-10-11 15:10:17.484064+00	f
+2758	The Good Sister	the good sister | sally hepworth	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.046494+00	2026-10-11 15:10:17.484075+00	f
+2759	Mad Mabel	mad mabel | sally hepworth	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.050804+00	2026-10-11 15:10:17.484085+00	f
+2764	The Island	the island | sarah goodwin	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.086315+00	2026-10-11 15:10:17.484128+00	f
+2765	Twice Shy	twice shy | sarah hogle	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.092985+00	2026-10-11 15:10:17.48414+00	f
+2770	Serial Killer Support Group	serial killer support group | saratoga schaefer	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.118453+00	2026-10-11 15:10:17.484176+00	f
+2771	Blood Sugar	blood sugar | sascha rothchild	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.127347+00	2026-10-11 15:10:17.484188+00	f
+2779	The Hitchcock Hotel	the hitchcock hotel | stephanie wrobel	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.189175+00	2026-10-11 15:10:17.484254+00	f
+2781	The Venue	the venue | t.j. payne	2020	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.208928+00	2026-10-11 15:10:17.484298+00	f
+2782	Intercepts	intercepts | t.j. payne	2019	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.218427+00	2026-10-11 15:10:17.48431+00	f
+2784	An Evil Premise	an evil premise | t. marie vandelly	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.234108+00	2026-10-11 15:10:17.484329+00	f
+2795	Any Trope But You	any trope but you | victoria lavine	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.342473+00	2026-10-11 15:10:17.484421+00	f
+2799	The Deep Sky	the deep sky | yume kitasei	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.373499+00	2026-10-11 15:10:17.484454+00	f
+2800	Saltcrop	saltcrop | yume kitasei	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.38076+00	2026-10-11 15:10:17.484465+00	f
+2801	Two Can Play	two can play | ali hazelwood	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.394768+00	2026-10-11 15:10:17.484478+00	f
+2802	Playing for Keeps	playing for keeps | alexandria bellefleur	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.402308+00	2026-10-11 15:10:17.484487+00	f
+2803	The Ritual	the ritual | shantel tessier	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.41472+00	2026-10-11 15:10:17.484505+00	f
+2804	I Want You More	i want you more | swan huntley	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.426665+00	2026-10-11 15:10:17.484517+00	f
+2805	Dolls & Daggers	dolls & daggers | d.l. darby	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.435498+00	2026-10-11 15:10:17.484528+00	f
+2806	Shy Girl	shy girl | mia ballard	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.444091+00	2026-10-11 15:10:17.484539+00	f
+2807	Broken Bonds	broken bonds | j. bree	2021	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.456557+00	2026-10-11 15:10:17.48455+00	f
+2808	The Raven Scholar	the raven scholar | antonia hodgson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.467336+00	2026-10-11 15:10:17.484562+00	f
+2810	To Cage a Wild Bird	to cage a wild bird | brooke fast	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.481596+00	2026-10-11 15:10:17.484579+00	f
+2812	The Serpent and the Wings of Night	the serpent and the wings of night | carissa broadbent	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.496387+00	2026-10-11 15:10:17.484612+00	f
+2813	A Killer Kind of Romance	a killer kind of romance | letizia lorini	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.50336+00	2026-10-11 15:10:17.484625+00	f
+2814	Detour	detour | jeff rake; rob hart	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.514997+00	2026-10-11 15:10:17.484637+00	f
+2815	The Alpine Retreat	the alpine retreat | sarah goodwin	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.519593+00	2026-10-11 15:10:17.484647+00	f
+2821	Meet the Newmans	meet the newmans | jennifer niven	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.558875+00	2026-10-11 15:10:17.48469+00	f
+2823	A Box Full of Darkness	a box full of darkness | simone st. james	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.568661+00	2026-10-11 15:10:17.484706+00	f
+2824	Just Watch Me	just watch me | lior torenberg	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.575937+00	2026-10-11 15:10:17.484717+00	f
+2825	Dead in the Water	dead in the water | john marrs	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.580731+00	2026-10-11 15:10:17.484727+00	f
+2826	The Future Saints	the future saints | ashley winstead	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.585401+00	2026-10-11 15:10:17.484737+00	f
+2828	It's Not Her	it's not her | mary kubica	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.597089+00	2026-10-11 15:10:17.484755+00	f
+2829	Greedy	greedy | callie kazumi	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.604048+00	2026-10-11 15:10:17.484766+00	f
+2830	How to Kill a Guy in Ten Dates	how to kill a guy in ten dates | shailee thompson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.610956+00	2026-10-11 15:10:17.484777+00	f
+2831	How to Steal a Galaxy	how to steal a galaxy | beth revis	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.615833+00	2026-10-11 15:10:17.484788+00	f
+2832	Last Chance to Save the World	last chance to save the world | beth revis	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.62041+00	2026-10-11 15:10:17.484797+00	f
+2834	Operation Bounce House	operation bounce house | matt dinniman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.632994+00	2026-10-11 15:10:17.484814+00	f
+2836	For Human Use	for human use | sarah g. pierce	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.663654+00	2026-10-11 15:10:17.484832+00	f
+2838	Game, Set, Match	game, set, match | jennifer iacopelli	2013	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.675829+00	2026-10-11 15:10:17.484848+00	f
+2840	When I Kill You	when i kill you | b. a. paris	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.690028+00	2026-10-11 15:10:17.484867+00	f
+2841	Crown of War and Shadow	crown of war and shadow | j.r. ward	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.69483+00	2026-10-11 15:10:17.484877+00	f
+2846	Valentine's Slay	valentine's slay | navessa allen	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.722666+00	2026-10-11 15:10:17.484943+00	f
+2849	The Girls Before	the girls before | kate alice marshall	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.73911+00	2026-10-11 15:10:17.484967+00	f
+2850	Married to a Pirate	married to a pirate | athena rose	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.765979+00	2026-10-11 15:10:17.484978+00	f
+2851	Evil Genius	evil genius | claire oshetsky	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.773424+00	2026-10-11 15:10:17.484988+00	f
+2852	After the Fall	after the fall | edward ashton	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.777906+00	2026-10-11 15:10:17.484998+00	f
+2853	Strange Buildings	strange buildings | uketsu	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.783424+00	2026-10-11 15:10:17.485007+00	f
+2855	No Matter What	no matter what | cara bastone	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.804231+00	2026-10-11 15:10:17.485025+00	f
+2857	In Her Own League	in her own league | liz tomforde	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.81791+00	2026-10-11 15:10:17.485044+00	f
+2858	The Book Tour	the book tour | emily ohanjanians	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.825894+00	2026-10-11 15:10:17.485054+00	f
+2861	Toe to Toe	toe to toe | falon ballard	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.850921+00	2026-10-11 15:10:17.485078+00	f
+2862	This Story Might Save Your Life	this story might save your life | tiffany crum	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.867253+00	2026-10-11 15:10:17.485089+00	f
+2863	The Starter Ex	the starter ex | mia sosa	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.878212+00	2026-10-11 15:10:17.485101+00	f
+2864	The Truth About Ruby Cooper	the truth about ruby cooper | liz nugent	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.883689+00	2026-10-11 15:10:17.48511+00	f
+2866	Blood & Roses Volume 1	blood & roses volume 1 | callie hart	2014	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.894114+00	2026-10-11 15:10:17.485126+00	f
+2875	A Tongue So Sweet and Deadly	a tongue so sweet and deadly | sophia st. germain	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.957877+00	2026-10-11 15:10:17.485192+00	f
+2879	Nothing Tastes As Good	nothing tastes as good | luke dumas	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:15.979279+00	2026-10-11 15:10:17.485222+00	f
+2883	Love Is An Algorithm	love is an algorithm | laura brooke robson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.007544+00	2026-10-11 15:10:17.485256+00	f
+2887	Bodies of Work	bodies of work | clay mcleod chapman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.039449+00	2026-10-11 15:10:17.48531+00	f
+2888	Happy Ending	happy ending | chloe liese	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.043734+00	2026-10-11 15:10:17.48532+00	f
+2890	Cherry Baby	cherry baby | rainbow rowell	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.057221+00	2026-10-11 15:10:17.485338+00	f
+2892	Japanese Gothic	japanese gothic | kylie lee baker	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.068426+00	2026-10-11 15:10:17.485357+00	f
+2894	The Dinner Party	the dinner party | freida mcfadden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.081872+00	2026-10-11 15:10:17.485377+00	f
+2896	Her First Lie	her first lie | lucinda berry	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.093135+00	2026-10-11 15:10:17.485394+00	f
+2898	The Many	the many | sylvain neuvel	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.104359+00	2026-10-11 15:10:17.485411+00	f
+2900	Love Galaxy	love galaxy | sierra branham	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.118059+00	2026-10-11 15:10:17.485429+00	f
+2901	Molka	molka | monika kim	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.122957+00	2026-10-11 15:10:17.485439+00	f
+2902	Blood Bound	blood bound | ellis hunter	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.129747+00	2026-10-11 15:10:17.485449+00	f
+2904	The Library After Dark	the library after dark | ande pliego	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.146789+00	2026-10-11 15:10:17.485471+00	f
+2905	Death's Daughter	death's daughter | s. a. barnes	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.152185+00	2026-10-11 15:10:17.485482+00	f
+2907	Rules for the Summer	rules for the summer | meghan quinn	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.165321+00	2026-10-11 15:10:17.4855+00	f
+2908	Cactus Heart	cactus heart | clio evans	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.171979+00	2026-10-11 15:10:17.485512+00	f
+2913	Fever Dream	fever dream | elsie silver	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.203133+00	2026-10-11 15:10:17.485554+00	f
+2914	Maneater	maneater | ellie graves	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.209589+00	2026-10-11 15:10:17.485567+00	f
+2915	The Last Book Club	the last book club | joanne rock	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.219455+00	2026-10-11 15:10:17.48558+00	f
+2916	Dead Weight	dead weight | hildur knutsdottir	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.224872+00	2026-10-11 15:10:17.485591+00	f
+2918	The Boyfriend Goal	the boyfriend goal | lauren blakely	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.238623+00	2026-10-11 15:10:17.48561+00	f
+2924	A Fortune of Sand	a fortune of sand | ruta sepetys	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.266228+00	2026-10-11 15:10:17.48565+00	f
+2932	Crown Me Dead	crown me dead | liv zander	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.309792+00	2026-10-11 15:10:17.485709+00	f
+2935	Prince of Hate	prince of hate | michelle thate	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.328025+00	2026-10-11 15:10:17.485736+00	f
+2938	Sublimation	sublimation | isabel j. kim	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.353663+00	2026-10-11 15:10:17.485763+00	f
+2939	Backstabbers	backstabbers | eliza jabore	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.360449+00	2026-10-11 15:10:17.485775+00	f
+2940	Man of My Dreams	man of my dreams | olivia worley	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.36721+00	2026-10-11 15:10:17.485786+00	f
+2941	Not Good Neighbors	not good neighbors | violet lumani	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.375992+00	2026-10-11 15:10:17.485799+00	f
+2944	You First	you first | caroline kepnes	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.393898+00	2026-10-11 15:10:17.485824+00	f
+2945	A Broken Promise	a broken promise | tetyana walker	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.403007+00	2026-10-11 15:10:17.485837+00	f
+2946	A Simple Truth	a simple truth | tetyana walker	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.407434+00	2026-10-11 15:10:17.485847+00	f
+2947	A Rising Hope	a rising hope | tetyana walker	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.41208+00	2026-10-11 15:10:17.485857+00	f
+2948	A Deal With the Reaper	a deal with the reaper | madison lawson	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.418783+00	2026-10-11 15:10:17.485868+00	f
+2949	A Sanctuary for Sin	a sanctuary for sin | madison lawson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.423516+00	2026-10-11 15:10:17.485879+00	f
+2950	The Summer Girlfriend	the summer girlfriend | kristina forest	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.428684+00	2026-10-11 15:10:17.485888+00	f
+2951	This Kingdom Will Not Kill Me	this kingdom will not kill me | illona andrews	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.435726+00	2026-10-11 15:10:17.485899+00	f
+2952	The Last Contract of Isako	the last contract of isako | fonda lee	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.442679+00	2026-10-11 15:10:17.485911+00	f
+2953	North Country	north country | k. a. tucker	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.447314+00	2026-10-11 15:10:17.48592+00	f
+2954	The Great Outdoors	the great outdoors | kayla olson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.451766+00	2026-10-11 15:10:17.48593+00	f
+2955	Dhampira	dhampira | amy pennza	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.4585+00	2026-10-11 15:10:17.485941+00	f
+2956	Slasher Summer	slasher summer | e.l. chen	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.465165+00	2026-10-11 15:10:17.485953+00	f
+2957	Nine Lives	nine lives | catherine steadman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.469742+00	2026-10-11 15:10:17.485962+00	f
+2958	Chase Me If You Can	chase me if you can | heather frances	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.476907+00	2026-10-11 15:10:17.485973+00	f
+2959	It Could Have Been Her	it could have been her | lisa jewell	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.481519+00	2026-10-11 15:10:17.485983+00	f
+2960	Crash	crash | kathy lockheart	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.488376+00	2026-10-11 15:10:17.485994+00	f
+2961	Dead But Dreaming of Electric Sheep	dead but dreaming of electric sheep | paul tremblay	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.493301+00	2026-10-11 15:10:17.486004+00	f
+2962	By Blade, I Protect	by blade, i protect | penelope sky	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.499937+00	2026-10-11 15:10:17.486015+00	f
+2963	Ink Bleed	ink bleed | trinity lynn	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.506972+00	2026-10-11 15:10:17.486026+00	f
+2964	Helpless	helpless | jessica knoll	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.511825+00	2026-10-11 15:10:17.486036+00	f
+2965	Fabulous Bodies	fabulous bodies | chuck tingle	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.516788+00	2026-10-11 15:10:17.486046+00	f
+2966	Ungodly Rich	ungodly rich | katharine mcgee	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.523977+00	2026-10-11 15:10:17.486056+00	f
+2967	The Season of Sinking	the season of sinking | daphne woolsoncroft	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.528833+00	2026-10-11 15:10:17.486066+00	f
+2969	Web of Vows and Vengeance	web of vows and vengeance | aria ashbrook	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.542992+00	2026-10-11 15:10:17.486084+00	f
+2970	Given	given | elayna r. gallea	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.550416+00	2026-10-11 15:10:17.486094+00	f
+2971	Hunted	hunted | elayna r. gallea	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.555068+00	2026-10-11 15:10:17.486104+00	f
+2972	Die For Me	die for me | shirlene obuobi	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.562182+00	2026-10-11 15:10:17.486115+00	f
+2973	Cross My Heart, I Hope You Die	cross my heart, i hope you die | mallory arnold	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.566796+00	2026-10-11 15:10:17.486125+00	f
+2974	In Stormy Weather	in stormy weather | chelsea curto	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.573841+00	2026-10-11 15:10:17.486137+00	f
+2975	The Last to Drown	the last to drown | noelle w. ihli	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.583142+00	2026-10-11 15:10:17.48615+00	f
+2976	Yes, Chef	yes, chef | grace reilly	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.589748+00	2026-10-11 15:10:17.486161+00	f
+2977	In Your Court	in your court | kit haley	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.597025+00	2026-10-11 15:10:17.486173+00	f
+2978	Buyer Beware	buyer beware | catherine ryan howard	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.601668+00	2026-10-11 15:10:17.486183+00	f
+2979	Plant Lady	plant lady | minyoung kang	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.610621+00	2026-10-11 15:10:17.486195+00	f
+2980	Pink Ink	pink ink | avina st. graves	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.615595+00	2026-10-11 15:10:17.486205+00	f
+2981	Lost and Found	lost and found | tarah dewitt	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.620255+00	2026-10-11 15:10:17.486214+00	f
+2983	Let's Kiss and Tell	let's kiss and tell | joss richard	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.633994+00	2026-10-11 15:10:17.486235+00	f
+2984	The Matchmaker's Cottage	the matchmaker's cottage | kat sloane	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.640798+00	2026-10-11 15:10:17.486247+00	f
+2985	Devil Inside	devil inside | clay mcleod chapman	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.645224+00	2026-10-11 15:10:17.486257+00	f
+2988	If Books Could Kill	if books could kill | kate eberle	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.663819+00	2026-10-11 15:10:17.486304+00	f
+2989	The Death Row Club	the death row club | v. a. vazquez	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.670392+00	2026-10-11 15:10:17.486317+00	f
+2990	Starside	starside | alex aster	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.675661+00	2026-10-11 15:10:17.486328+00	f
+2991	The Secret Dinner	the secret dinner | raphael montes	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.684125+00	2026-10-11 15:10:17.486341+00	f
+2992	Scion	scion | james islington	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.688592+00	2026-10-11 15:10:17.48635+00	f
+2994	Hunting Adeline	hunting adeline | h. g. carlton	2022	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.715505+00	2026-10-11 15:10:17.48638+00	f
+2995	Blood & Steel	blood & steel | helen scheuerer	2023	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.722337+00	2026-10-11 15:10:17.486392+00	f
+2996	Whidbey	whidbey | t kira madden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.751596+00	2026-10-11 15:10:17.486424+00	f
+2997	Him	him | elle kennedy; sarina bowen	2015	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.800126+00	2026-10-11 15:10:17.486454+00	f
+2998	Bad Boy Era	bad boy era | amy daws	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.818127+00	2026-10-11 15:10:17.486465+00	f
+2999	Beneath	beneath | ariel sullivan	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.863495+00	2026-10-11 15:10:17.486505+00	f
+3001	King of Gluttony	king of gluttony | ana huang	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.914532+00	2026-10-11 15:10:17.486555+00	f
+3002	King of Envy	king of envy | ana huang	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.924093+00	2026-10-11 15:10:17.486567+00	f
+3003	King of Sloth	king of sloth | ana huang	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.928827+00	2026-10-11 15:10:17.486577+00	f
+3004	The One Day You Were My Husband	the one day you were my husband | rosie walsh	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.942123+00	2026-10-11 15:10:17.486591+00	f
+3005	My Blade, Your Back	my blade, your back | k.m. moronova	2025	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.952179+00	2026-10-11 15:10:17.486605+00	f
+3006	The Reality Of It All	the reality of it all | allison speka	2024	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.964169+00	2026-10-11 15:10:17.486621+00	f
+3007	The House That Eats the Dead	the house that eats the dead | max doty	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.984397+00	2026-10-11 15:10:17.486643+00	f
+3008	One of the Family	one of the family | mark edwards	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:16.994009+00	2026-10-11 15:10:17.486656+00	f
+3009	Heart of Glass	heart of glass | jennifer hillier	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.001029+00	2026-10-11 15:10:17.486668+00	f
+3010	They Say a Girl Died Here	they say a girl died here | sarah pinborough	2016	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.005852+00	2026-10-11 15:10:17.486678+00	f
+3013	Love Felt Like This	love felt like this | julie olivia	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.031905+00	2026-10-11 15:10:17.48671+00	f
+3014	Doomsdate	doomsdate | laura piper lee	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.039132+00	2026-10-11 15:10:17.486722+00	f
+3017	Love Antidote	love antidote | brynne weaver	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.161005+00	2026-10-11 15:10:17.486774+00	f
+3018	Solace House	solace house | will maclean	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.172462+00	2026-10-11 15:10:17.486789+00	f
+3019	Threshing Day	threshing day | rebecca yarros	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.179174+00	2026-10-11 15:10:17.486802+00	f
+3020	Newbourne Park	newbourne park | jennifer thorne	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.184821+00	2026-10-11 15:10:17.486812+00	f
+3021	XO Karma	xo karma | hailey dickert	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.19159+00	2026-10-11 15:10:17.486824+00	f
+3022	The Code of You	the code of you | sabrina hoffmann	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.198336+00	2026-10-11 15:10:17.486836+00	f
+3023	Bad Words	bad words | rioghnach robinson	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.204824+00	2026-10-11 15:10:17.486847+00	f
+3024	The Witch	the witch | freida mcfadden	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.209134+00	2026-10-11 15:10:17.486857+00	f
+3025	Driven	driven | mason coile	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.213763+00	2026-10-11 15:10:17.486866+00	f
+3026	Dive Bar at the End of the Road	dive bar at the end of the road | kelley armstrong	2026	\N	\N	\N	\N	\N	\N	f	f	f	2026-10-11 15:10:17.228717+00	2026-10-11 15:10:17.486882+00	f
+3286	When He Was Wicked	when he was wicked | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.116461+00	2026-10-11 15:56:56.806816+00	f
+3287	It's in His Kiss	it's in his kiss | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.119898+00	2026-10-11 15:56:56.806833+00	f
+3288	On the Way to the Wedding	on the way to the wedding | julia quinn	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.123358+00	2026-10-11 15:56:56.806847+00	f
+3289	Broken Dolls: Deliverance	broken dolls: deliverance | mique watson	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.126856+00	2026-10-11 15:56:56.806861+00	f
+3290	Echoes	echoes | steph macca	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.207981+00	2026-10-11 15:56:56.806874+00	f
+3291	Ravage	ravage | steph macca	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.211132+00	2026-10-11 15:56:56.806888+00	f
+3292	Exile	exile | steph macca	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.214165+00	2026-10-11 15:56:56.806901+00	f
+3293	The Retreat	the retreat | sarah pearse	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.21738+00	2026-10-11 15:56:56.806933+00	f
+3294	The Wilds	the wilds | sarah pearse	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.221575+00	2026-10-11 15:56:56.80695+00	f
+3295	The Strawberry Patch Pancake House	the strawberry patch pancake house | laurie gilmore	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.224617+00	2026-10-11 15:56:56.806965+00	f
+3296	The Gingerbread Bakery	the gingerbread bakery | laurie gilmore	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.227716+00	2026-10-11 15:56:56.806978+00	f
+3297	The Daisy Chain Flower Shop	the daisy chain flower shop | laurie gilmore	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.230622+00	2026-10-11 15:56:56.806992+00	f
+3298	An Elderly Lady Must Not Be Crossed	an elderly lady must not be crossed | helene tursten	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.233699+00	2026-10-11 15:56:56.807009+00	f
+3299	We Who Will Rise	we who will rise | stacia stark	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.236734+00	2026-10-11 15:56:56.807023+00	f
+3300	Sky Key	sky key | james frey; nils johnson-shelton	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.239835+00	2026-10-11 15:56:56.807037+00	f
+3301	Rules of the Game	rules of the game | james frey; nils johnson-shelton	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.242941+00	2026-10-11 15:56:56.807052+00	f
+3302	Everyone This Christmas Has a Secret	everyone this christmas has a secret | benjamin stevenson	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.245977+00	2026-10-11 15:56:56.807065+00	f
+3303	Everyone in This Bank Is a Thief	everyone in this bank is a thief | benjamin stevenson	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.248955+00	2026-10-11 15:56:56.807079+00	f
+3304	Silver Tears	silver tears | camilla läckberg	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.253033+00	2026-10-11 15:56:56.807093+00	f
+3305	Dreams of Bronze	dreams of bronze | camilla läckberg	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.255959+00	2026-10-11 15:56:56.807106+00	f
+3306	Finlay Donovan Jumps the Gun	finlay donovan jumps the gun | elle cosimano	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.258955+00	2026-10-11 15:56:56.807118+00	f
+3307	Finlay Donovan Rolls the Dice	finlay donovan rolls the dice | elle cosimano	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.262124+00	2026-10-11 15:56:56.807131+00	f
+3308	Finlay Donovan Digs Her Own Grave	finlay donovan digs her own grave | elle cosimano	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.304611+00	2026-10-11 15:56:56.807144+00	f
+3309	Finlay Donovan Crosses the Line	finlay donovan crosses the line | elle cosimano	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.308425+00	2026-10-11 15:56:56.807156+00	f
+3310	Finlay Donovan Plays with Fire	finlay donovan plays with fire | elle cosimano	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.311947+00	2026-10-11 15:56:56.807169+00	f
+3311	Unrivaled	unrivaled | rachel reid	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.315131+00	2026-10-11 15:56:56.807183+00	f
+3312	A Demon's Guide to Wooing a Witch	a demon's guide to wooing a witch | sarah hawley	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.318143+00	2026-10-11 15:56:56.807195+00	f
+3313	A Werewolf's Guide to Seducing a Vampire	a werewolf's guide to seducing a vampire | sarah hawley	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.321137+00	2026-10-11 15:56:56.807208+00	f
+3314	Along the River of Flesh	along the river of flesh | kristopher triana	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.324231+00	2026-10-11 15:56:56.807221+00	f
+3315	The Ravenous Dead	the ravenous dead | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.32709+00	2026-10-11 15:56:56.807233+00	f
+3316	The Twisted Dead	the twisted dead | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.330215+00	2026-10-11 15:56:56.807246+00	f
+3317	The Hollow Dead	the hollow dead | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.333189+00	2026-10-11 15:56:56.807259+00	f
+3318	The Vengeful Dead	the vengeful dead | darcy coates	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.336201+00	2026-10-11 15:56:56.807273+00	f
+3319	Harry Potter and the Cursed Child: Parts One and Two	harry potter and the cursed child: parts one and two | j.k. rowling	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:53.339191+00	2026-10-11 15:56:56.807287+00	f
+3320	And Now, Back to You	and now, back to you | b. k. borison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.342355+00	2026-10-11 15:56:56.807302+00	f
+3321	Longtime Listener	longtime listener | b. k. borison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.345312+00	2026-10-11 15:56:56.807316+00	f
+3322	The Wolf	the wolf | samuel bjørk	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.34835+00	2026-10-11 15:56:56.80733+00	f
+3323	I'm Traveling Alone	i'm traveling alone | samuel bjørk	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:53.351429+00	2026-10-11 15:56:56.807352+00	f
+3324	The Owl Always Hunts at Night	the owl always hunts at night | samuel bjørk	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:53.35456+00	2026-10-11 15:56:56.807367+00	f
+3325	Dead Island	dead island | samuel bjørk	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.404669+00	2026-10-11 15:56:56.80738+00	f
+3326	The Bomber	the bomber | samuel bjørk	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.408181+00	2026-10-11 15:56:56.807393+00	f
+3327	Fix Her Up	fix her up | tessa bailey	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.411335+00	2026-10-11 15:56:56.807405+00	f
+3328	Love Her or Lose Her	love her or lose her | tessa bailey	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.414527+00	2026-10-11 15:56:56.807418+00	f
+3329	Barbarian Alien	barbarian alien | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.417651+00	2026-10-11 15:56:56.807432+00	f
+3330	Barbarian Lover	barbarian lover | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.420761+00	2026-10-11 15:56:56.807445+00	f
+3331	Barbarian Mine	barbarian mine | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.423771+00	2026-10-11 15:56:56.807457+00	f
+3332	Barbarian's Prize	barbarian's prize | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.426702+00	2026-10-11 15:56:56.807469+00	f
+3333	Barbarian's Mate	barbarian's mate | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.429598+00	2026-10-11 15:56:56.807482+00	f
+3334	Barbarian's Touch	barbarian's touch | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.432988+00	2026-10-11 15:56:56.807494+00	f
+3335	Barbarian's Taming	barbarian's taming | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.435891+00	2026-10-11 15:56:56.807517+00	f
+3336	Barbarian's Heart	barbarian's heart | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.438913+00	2026-10-11 15:56:56.80753+00	f
+3337	Barbarian's Hope	barbarian's hope | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.442767+00	2026-10-11 15:56:56.807544+00	f
+3338	Barbarian's Choice	barbarian's choice | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.445852+00	2026-10-11 15:56:56.807556+00	f
+3339	Barbarian's Redemption	barbarian's redemption | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.448894+00	2026-10-11 15:56:56.807569+00	f
+3340	Barbarian's Lady	barbarian's lady | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.452231+00	2026-10-11 15:56:56.807582+00	f
+3341	Barbarian's Rescue	barbarian's rescue | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.455287+00	2026-10-11 15:56:56.807595+00	f
+3342	Barbarian's Tease	barbarian's tease | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.458265+00	2026-10-11 15:56:56.807608+00	f
+3343	Barbarian's Beloved	barbarian's beloved | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.461263+00	2026-10-11 15:56:56.807623+00	f
+3344	Barbarian's Seduction	barbarian's seduction | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.464241+00	2026-10-11 15:56:56.807636+00	f
+3345	Barbarian's Treasure	barbarian's treasure | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.467298+00	2026-10-11 15:56:56.807649+00	f
+3346	Barbarian's Bride	barbarian's bride | ruby dixon	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.47083+00	2026-10-11 15:56:56.807662+00	f
+3347	Obsidio	obsidio | amie kaufman; jay kristoff	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.473854+00	2026-10-11 15:56:56.807676+00	f
+3348	Don't Go Baking My Heart	don't go baking my heart | n. g. peltier	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.476966+00	2026-10-11 15:56:56.807689+00	f
+3349	The Dating Countdown	the dating countdown | n. g. peltier	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.479801+00	2026-10-11 15:56:56.807702+00	f
+3351	Defekt	defekt | nino cipri	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.48661+00	2026-10-11 15:56:56.807728+00	f
+3352	Loveboat Reunion	loveboat reunion | abigail hing wen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.491234+00	2026-10-11 15:56:56.807741+00	f
+3353	Loveboat Forever	loveboat forever | abigail hing wen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.504226+00	2026-10-11 15:56:56.807753+00	f
+3354	In the Weeds	in the weeds | b. k. borison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.507638+00	2026-10-11 15:56:56.807766+00	f
+3355	Mixed Signals	mixed signals | b. k. borison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.512626+00	2026-10-11 15:56:56.807779+00	f
+3356	Business Casual	business casual | b. k. borison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.51576+00	2026-10-11 15:56:56.807792+00	f
+3357	Wildfire	wildfire | hannah grace	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.522862+00	2026-10-11 15:56:56.807805+00	f
+3358	Daydream	daydream | hannah grace	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.526378+00	2026-10-11 15:56:56.807825+00	f
+3359	A Prayer for the Crown-Shy	a prayer for the crown-shy | becky chambers	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.534701+00	2026-10-11 15:56:56.807839+00	f
+3360	Artificial Condition	artificial condition | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.537911+00	2026-10-11 15:56:56.807853+00	f
+3361	Rogue Protocol	rogue protocol | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.541328+00	2026-10-11 15:56:56.807866+00	f
+3362	Exit Strategy	exit strategy | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.647487+00	2026-10-11 15:56:56.807879+00	f
+3363	Network Effect	network effect | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.65681+00	2026-10-11 15:56:56.807893+00	f
+3364	Fugitive Telemetry	fugitive telemetry | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.707394+00	2026-10-11 15:56:56.808184+00	f
+3365	System Collapse	system collapse | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.710736+00	2026-10-11 15:56:56.808258+00	f
+3366	Platform Decay	platform decay | martha wells	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.713835+00	2026-10-11 15:56:56.808279+00	f
+3367	The Story of a New Name	the story of a new name | elena ferrante	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.716889+00	2026-10-11 15:56:56.808299+00	f
+3368	Those Who Leave and Those Who Stay	those who leave and those who stay | elena ferrante	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.721145+00	2026-10-11 15:56:56.808314+00	f
+3369	The Story of the Lost Child	the story of the lost child | elena ferrante	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.724206+00	2026-10-11 15:56:56.808328+00	f
+3370	Road Trip With the Vampire	road trip with the vampire | jenna levine	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.727299+00	2026-10-11 15:56:56.808341+00	f
+3371	The Pool Boy	the pool boy | nikki sloane	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.730362+00	2026-10-11 15:56:56.808355+00	f
+3372	The Architect	the architect | nikki sloane	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.733652+00	2026-10-11 15:56:56.808367+00	f
+3373	The Frat Boy	the frat boy | nikki sloane	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.736697+00	2026-10-11 15:56:56.80838+00	f
+3374	The Good Girl	the good girl | nikki sloane	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.739692+00	2026-10-11 15:56:56.808392+00	f
+3375	The Broker	the broker | nikki sloane	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.743381+00	2026-10-11 15:56:56.808404+00	f
+3376	Psycho	psycho | onley james	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.746491+00	2026-10-11 15:56:56.808415+00	f
+3377	Moonstruck	moonstruck | onley james	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.760154+00	2026-10-11 15:56:56.808427+00	f
+3378	Headcase	headcase | onley james	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.770052+00	2026-10-11 15:56:56.808439+00	f
+3379	Mad Man	mad man | onley james	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.773962+00	2026-10-11 15:56:56.808451+00	f
+3380	Lunatic	lunatic | onley james	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.777352+00	2026-10-11 15:56:56.808463+00	f
+3381	Maniac	maniac | onley james	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.780665+00	2026-10-11 15:56:56.808475+00	f
+3382	Bound in Cabo	bound in cabo | dana isaly	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.783699+00	2026-10-11 15:56:56.808486+00	f
+3383	D*cked by Daddy	d*cked by daddy | dana isaly	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.787242+00	2026-10-11 15:56:56.808498+00	f
+3384	Locked in Love	locked in love | dana isaly	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.790372+00	2026-10-11 15:56:56.80851+00	f
+3385	Burdens We Carry	burdens we carry | dana isaly	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.793547+00	2026-10-11 15:56:56.808521+00	f
+3386	Desires We Seek	desires we seek | dana isaly	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.796657+00	2026-10-11 15:56:56.808533+00	f
+3387	Rules We Break	rules we break | dana isaly	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.807692+00	2026-10-11 15:56:56.808546+00	f
+3388	One of Us Is Lying	one of us is lying | karen m. mcmanus	\N	\N	\N	\N	\N	\N	Series	f	f	t	2026-10-11 15:56:53.813365+00	2026-10-11 15:56:56.808558+00	f
+3389	One of Us Is Back	one of us is back | karen m. mcmanus	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.816688+00	2026-10-11 15:56:56.80857+00	f
+3390	Bloodshed	bloodshed | molly doyle	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.820408+00	2026-10-11 15:56:56.808583+00	f
+3391	Bloodbath	bloodbath | molly doyle	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.824091+00	2026-10-11 15:56:56.808595+00	f
+3392	Dark Corners	dark corners | megan goldin	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.827264+00	2026-10-11 15:56:56.808609+00	f
+3393	La nieve negra	la nieve negra | francesc miralles	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.83038+00	2026-10-11 15:56:56.808623+00	f
+3394	Through the Gathering Storm	through the gathering storm | catherine cowles	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.929973+00	2026-10-11 17:07:56.835385+00	t
+3350	King of Lust	king of lust | ana huang	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.48296+00	2026-10-11 17:08:09.692634+00	t
+3396	Štorka MANIFEST	štorka manifest | jelena hrvoj	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.947093+00	2026-10-11 15:56:56.808663+00	f
+3397	What Feasts at Night	what feasts at night | t. kingfisher	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:53.994772+00	2026-10-11 15:56:56.808675+00	f
+3398	What Stalks the Deep	what stalks the deep | t. kingfisher	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.021938+00	2026-10-11 15:56:56.808711+00	f
+3399	The Baby Dragon Bakery	the baby dragon bakery | aamna qureshi	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.055032+00	2026-10-11 15:56:56.808724+00	f
+3400	The Baby Dragon Bookshop	the baby dragon bookshop | aamna qureshi	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.065034+00	2026-10-11 15:56:56.808735+00	f
+3401	The Baby Dragon Flower Shop	the baby dragon flower shop | aamna qureshi	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.078079+00	2026-10-11 15:56:56.808748+00	f
+3402	Roses of May	roses of may | dot hutchison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.088718+00	2026-10-11 15:56:56.808759+00	f
+3403	The Summer Children	the summer children | dot hutchison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.148156+00	2026-10-11 15:56:56.80877+00	f
+3404	The Vanishing Season	the vanishing season | dot hutchison	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.18119+00	2026-10-11 15:56:56.808781+00	f
+3405	The Second Rebel	the second rebel | linden a. lewis	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.186514+00	2026-10-11 15:56:56.808793+00	f
+3406	The Last Hero	the last hero | linden a. lewis	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.19045+00	2026-10-11 15:56:56.808808+00	f
+3407	The Girl in Question	the girl in question | tess sharpe	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.205703+00	2026-10-11 15:56:56.808819+00	f
+3408	Don't Fear the Reaper	don't fear the reaper | stephen graham jones	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.212785+00	2026-10-11 15:56:56.80883+00	f
+3409	The Angel of Indian Lake	the angel of indian lake | stephen graham jones	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.237423+00	2026-10-11 15:56:56.808842+00	f
+3410	The Bride Test	the bride test | helen hoang	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.244536+00	2026-10-11 15:56:56.808853+00	f
+3411	The Heart Principle	the heart principle | helen hoang	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.251936+00	2026-10-11 15:56:56.808868+00	f
+3413	The Dragon Republic	the dragon republic | r. f. kuang	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.281085+00	2026-10-11 15:56:56.80889+00	f
+3414	The Burning God	the burning god | r. f. kuang	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.286365+00	2026-10-11 15:56:56.808901+00	f
+3416	Doctor Sleep	doctor sleep | stephen king	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.314333+00	2026-10-11 15:56:56.808955+00	f
+3417	New Moon	new moon | stephenie meyer	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.318243+00	2026-10-11 15:56:56.808968+00	f
+3418	Eclipse	eclipse | stephenie meyer	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.325396+00	2026-10-11 15:56:56.808979+00	f
+3419	Breaking Dawn	breaking dawn | stephenie meyer	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.332747+00	2026-10-11 15:56:56.808993+00	f
+3420	Midnight Sun	midnight sun | stephenie meyer	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.339757+00	2026-10-11 15:56:56.809005+00	f
+3421	This Coven Won't Break	this coven won't break | isabel sterling	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.347132+00	2026-10-11 15:56:56.809017+00	f
+3422	Crown of Midnight	crown of midnight | sarah j. maas	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.442182+00	2026-10-11 15:56:56.809031+00	f
+3423	Heir of Fire	heir of fire | sarah j. maas	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.460969+00	2026-10-11 15:56:56.809042+00	f
+3424	Queen of Shadows	queen of shadows | sarah j. maas	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.531029+00	2026-10-11 15:56:56.809053+00	f
+3425	Empire of Storms	empire of storms | sarah j. maas	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.570857+00	2026-10-11 15:56:56.809067+00	f
+3426	Tower of Dawn	tower of dawn | sarah j. maas	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.574367+00	2026-10-11 15:56:56.809078+00	f
+3427	Kingdom of Ash	kingdom of ash | sarah j. maas	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.57749+00	2026-10-11 15:56:56.809089+00	f
+3428	An Education in Malice	an education in malice | s. t. gibson	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.581087+00	2026-10-11 15:56:56.8091+00	f
+3429	Wildcard	wildcard | marie lu	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.584266+00	2026-10-11 15:56:56.809112+00	f
+3430	Come Tumbling Down	come tumbling down | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.587344+00	2026-10-11 15:56:56.809123+00	f
+3431	Across the Green Grass Fields	across the green grass fields | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.590994+00	2026-10-11 15:56:56.809135+00	f
+3432	Where the Drowned Girls Go	where the drowned girls go | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.598382+00	2026-10-11 15:56:56.809146+00	f
+3433	Lost in the Moment and Found	lost in the moment and found | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.601821+00	2026-10-11 15:56:56.809157+00	f
+3434	Mislaid in Parts Half-Known	mislaid in parts half-known | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.605158+00	2026-10-11 15:56:56.809168+00	f
+3435	Adrift in Currents Clean and Clear	adrift in currents clean and clear | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.608309+00	2026-10-11 15:56:56.809179+00	f
+3436	Through Gates of Garnet and Gold	through gates of garnet and gold | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.611593+00	2026-10-11 15:56:56.80919+00	f
+3437	A Song of Sugar Sparrows	a song of sugar sparrows | seanan mcguire	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.614634+00	2026-10-11 15:56:56.809201+00	f
+3438	Wayward	wayward | blake crouch	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.617793+00	2026-10-11 15:56:56.809212+00	f
+3439	The Last Town	the last town | blake crouch	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.620824+00	2026-10-11 15:56:56.809223+00	f
+3440	We Chase Shadows	we chase shadows | richard osman	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.623828+00	2026-10-11 15:56:56.809234+00	f
+3442	Eidolon	eidolon | grace draven	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.630249+00	2026-10-11 15:56:56.809256+00	f
+3443	The Ippos King	the ippos king | grace draven	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.633302+00	2026-10-11 15:56:56.809268+00	f
+3444	The Nomas King	the nomas king | grace draven	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.636522+00	2026-10-11 15:56:56.809278+00	f
+3412	The Spare	the spare | annie neugebauer	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.277485+00	2026-10-11 17:07:13.355632+00	t
+3415	Hunting Season	hunting season | brynne weaver	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.309042+00	2026-10-11 17:07:31.544259+00	t
+3441	Ruin Bound	ruin bound | sable sorensen	\N	\N	\N	\N	\N	\N	Series	f	f	f	2026-10-11 15:56:54.627012+00	2026-10-11 17:07:39.950294+00	t
 \.
 
 
@@ -4342,6 +4877,217 @@ COPY public.book_author (book_id, "position", author_id) FROM stdin;
 3026	0	1655
 3027	0	1656
 3028	0	827
+3237	0	622
+3238	0	861
+3239	0	861
+3240	0	465
+3241	0	465
+3242	0	465
+3243	0	743
+3244	0	743
+3245	0	544
+3246	0	544
+3247	0	503
+3248	0	556
+3249	0	556
+3250	0	554
+3251	0	554
+3252	0	533
+3253	0	619
+3254	0	619
+3255	0	619
+3256	0	619
+3257	0	619
+3258	0	619
+3259	0	619
+3260	0	619
+3261	0	619
+3262	0	619
+3263	0	619
+3264	0	619
+3265	0	619
+3266	0	619
+3267	0	619
+3268	0	619
+3269	0	619
+3270	0	619
+3271	0	619
+3272	0	619
+3273	0	619
+3274	0	619
+3275	0	618
+3276	0	618
+3277	0	618
+3278	0	652
+3279	0	652
+3280	0	652
+3281	0	652
+3282	0	573
+3283	0	573
+3284	0	573
+3285	0	573
+3286	0	573
+3287	0	573
+3288	0	573
+3289	0	684
+3290	0	822
+3291	0	822
+3292	0	822
+3293	0	596
+3294	0	596
+3295	0	756
+3296	0	756
+3297	0	756
+3298	0	669
+3299	0	858
+3300	0	681
+3300	1	682
+3301	0	681
+3301	1	682
+3302	0	700
+3303	0	700
+3304	0	561
+3305	0	561
+3306	0	581
+3307	0	581
+3308	0	581
+3309	0	581
+3310	0	581
+3311	0	883
+3312	0	790
+3313	0	790
+3314	0	730
+3315	0	618
+3316	0	618
+3317	0	618
+3318	0	618
+3319	0	731
+3320	0	699
+3321	0	699
+3322	0	545
+3323	0	545
+3324	0	545
+3325	0	545
+3326	0	545
+3327	0	622
+3328	0	622
+3329	0	628
+3330	0	628
+3331	0	628
+3332	0	628
+3333	0	628
+3334	0	628
+3335	0	628
+3336	0	628
+3337	0	628
+3338	0	628
+3339	0	628
+3340	0	628
+3341	0	628
+3342	0	628
+3343	0	628
+3344	0	628
+3345	0	628
+3346	0	628
+3347	0	456
+3347	1	457
+3348	0	667
+3349	0	667
+3350	0	848
+3351	0	655
+3352	0	516
+3353	0	516
+3354	0	699
+3355	0	699
+3356	0	699
+3357	0	714
+3358	0	714
+3359	0	588
+3360	0	735
+3361	0	735
+3362	0	735
+3363	0	735
+3364	0	735
+3365	0	735
+3366	0	735
+3367	0	568
+3368	0	568
+3369	0	568
+3370	0	901
+3371	0	796
+3372	0	796
+3373	0	796
+3374	0	796
+3375	0	796
+3376	0	798
+3377	0	798
+3378	0	798
+3379	0	798
+3380	0	798
+3381	0	798
+3382	0	623
+3383	0	623
+3384	0	623
+3385	0	623
+3386	0	623
+3387	0	623
+3388	0	466
+3389	0	466
+3390	0	632
+3391	0	632
+3392	0	781
+3393	0	571
+3394	0	872
+3395	0	872
+3396	0	584
+3397	0	535
+3398	0	535
+3399	0	775
+3400	0	775
+3401	0	775
+3402	0	636
+3403	0	636
+3404	0	636
+3405	0	719
+3406	0	719
+3407	0	815
+3408	0	578
+3409	0	578
+3410	0	551
+3411	0	551
+3412	0	871
+3413	0	710
+3414	0	710
+3415	0	693
+3416	0	476
+3417	0	514
+3418	0	514
+3419	0	514
+3420	0	514
+3421	0	553
+3422	0	460
+3423	0	460
+3424	0	460
+3425	0	460
+3426	0	460
+3427	0	460
+3428	0	836
+3429	0	580
+3430	0	511
+3431	0	511
+3432	0	511
+3433	0	511
+3434	0	511
+3435	0	511
+3436	0	511
+3437	0	511
+3438	0	519
+3439	0	519
+3440	0	560
+3441	0	830
+3442	0	608
+3443	0	608
+3444	0	608
 \.
 
 
@@ -5953,6 +6699,159 @@ COPY public.book_setting (book_id, "position", setting) FROM stdin;
 
 
 --
+-- Data for Name: bookclub; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bookclub (id, name, created_at, updated_at) FROM stdin;
+1	BRBN Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+2	Full Moon Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+3	Gin Tonic Bookaholics Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+4	IRL	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+5	Lights Out Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+6	Literally Dead Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+7	Queer Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+8	The Book Troop	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+9	The Thriller Troop Bookclub	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+\.
+
+
+--
+-- Data for Name: bookclub_pick; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bookclub_pick (id, bookclub_id, year, period, period_end, book_id, created_at, updated_at) FROM stdin;
+1	8	2021	2	\N	887	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+2	7	2021	3	\N	903	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+3	7	2021	4	\N	913	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+4	6	2021	4	\N	915	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+5	8	2021	4	\N	915	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+6	6	2021	5	\N	920	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+7	7	2021	6	\N	931	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+8	6	2021	7	\N	944	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+9	8	2021	7	\N	944	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+10	7	2021	7	\N	952	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+11	8	2021	8	\N	960	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+12	3	2021	8	\N	966	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+13	3	2021	9	\N	986	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+14	3	2021	11	\N	995	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+15	8	2021	12	\N	999	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+16	8	2021	12	\N	1005	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+17	8	2022	4	\N	1020	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+18	6	2022	7	\N	1033	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+19	8	2023	1	\N	1058	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+20	8	2023	2	\N	1063	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+21	8	2023	3	\N	1069	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+22	6	2023	3	\N	1071	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+23	6	2023	4	\N	1073	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+24	8	2023	4	\N	1079	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+25	6	2023	5	\N	1083	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+26	8	2023	5	\N	1086	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+27	8	2023	6	\N	1100	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+28	8	2023	7	\N	1110	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+29	8	2023	8	\N	1117	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+30	8	2023	9	\N	1128	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+31	6	2023	10	\N	1136	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+32	8	2023	10	\N	1137	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+33	8	2023	11	\N	1139	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+34	5	2023	11	\N	1140	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+35	8	2024	2	\N	1172	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+36	6	2024	2	\N	1173	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+37	5	2024	2	\N	1176	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+38	8	2024	3	\N	1184	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+39	6	2024	3	\N	1194	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+40	8	2024	4	\N	1205	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+41	6	2024	4	\N	1211	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+42	8	2024	5	\N	1219	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+43	8	2024	6	\N	1223	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+44	8	2024	7	\N	1234	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+45	5	2024	9	\N	1252	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+46	5	2024	11	\N	1266	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+47	8	2024	11	\N	1267	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+48	6	2024	12	\N	1272	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+49	9	2025	1	\N	1291	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+50	2	2025	1	\N	1293	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+51	2	2025	2	\N	1302	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+52	6	2025	2	\N	1302	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+53	9	2025	2	\N	1304	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+54	8	2025	2	\N	1304	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+55	6	2025	3	\N	1308	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+56	9	2025	3	\N	1314	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+57	8	2025	3	\N	1317	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+58	4	2025	3	\N	1319	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+59	8	2025	4	\N	1325	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+60	4	2025	5	\N	1333	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+61	9	2025	5	\N	1337	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+62	6	2025	5	\N	1343	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+63	8	2025	5	\N	1346	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+64	6	2025	6	\N	1347	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+65	2	2025	6	\N	1350	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+66	9	2025	6	\N	1352	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+67	8	2025	6	\N	1364	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+68	9	2025	7	\N	1368	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+69	4	2025	7	\N	1371	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+70	6	2025	7	\N	1372	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+71	8	2025	7	\N	1372	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+72	2	2025	7	\N	1375	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+73	8	2025	9	\N	1392	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+74	9	2025	9	\N	1401	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+75	2	2025	9	\N	1404	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+76	8	2025	10	\N	1410	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+77	6	2025	11	\N	1421	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+78	8	2025	11	\N	1422	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+79	4	2025	12	\N	1432	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+80	2	2025	12	\N	1433	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+81	1	2026	1	\N	1455	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+82	1	2026	2	\N	1464	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+83	8	2026	1	\N	1464	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+84	2	2026	3	\N	1475	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+85	4	2026	4	\N	1479	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+86	6	2026	4	\N	1482	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+87	2	2026	5	\N	1491	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+88	1	2026	5	\N	1495	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+89	6	2026	5	\N	1495	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+90	8	2026	2	\N	1496	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+91	6	2026	6	\N	1510	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+92	2	2026	7	\N	1521	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+93	8	2026	3	\N	1530	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+94	4	2026	9	\N	1539	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+95	4	2026	10	\N	1542	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+\.
+
+
+--
+-- Data for Name: bookclub_year; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bookclub_year (id, bookclub_id, year, schedule, created_at, updated_at) FROM stdin;
+1	1	2026	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+2	8	2023	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+3	8	2022	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+4	6	2025	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+5	5	2023	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+6	6	2026	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+7	6	2021	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+8	2	2026	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+9	9	2025	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+10	8	2026	SEASONAL	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+11	8	2025	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+12	6	2024	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+13	4	2025	CASUAL	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+14	8	2021	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+15	4	2026	CASUAL	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+16	2	2025	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+17	8	2024	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+18	3	2021	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+19	6	2022	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+20	7	2021	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+21	6	2023	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+22	5	2024	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+25	4	2027	CASUAL	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+27	6	2027	MONTHLY	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+29	8	2027	SEASONAL	2026-10-12 11:20:49.096476+00	2026-10-12 11:20:49.096476+00
+\.
+
+
+--
 -- Data for Name: copy; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -7445,6 +8344,10 @@ COPY public.flyway_schema_history (installed_rank, version, description, type, s
 3	3	seed list values	SQL	V3__seed_list_values.sql	698802888	neondb_owner	2026-10-09 12:16:50.893319	186	t
 4	4	copies and loans	SQL	V4__copies_and_loans.sql	-1441206169	neondb_owner	2026-10-11 15:04:43.271368	169	t
 5	5	series	SQL	V5__series.sql	1942934954	neondb_owner	2026-10-11 15:54:23.007116	124	t
+6	6	book not out yet	SQL	V6__book_not_out_yet.sql	1669461855	neondb_owner	2026-10-11 17:05:46.048693	108	t
+7	7	yearly goal	SQL	V7__yearly_goal.sql	1244022062	neondb_owner	2026-10-12 07:02:56.099689	325	t
+8	8	bookclubs	SQL	V8__bookclubs.sql	1727027979	neondb_owner	2026-10-12 11:20:48.790881	314	t
+9	9	bingo	SQL	V9__bingo.sql	-329677579	neondb_owner	2026-10-12 12:09:34.792957	198	t
 \.
 
 
@@ -8278,7 +9181,6 @@ COPY public.reading (id, book_id, date_started, date_finished, reading_year, mon
 1049	1041	2022-09-01	\N	2022	9	\N	t	\N	f	Croatian	New to me	Gifted	numbers	\N	\N	\N	2026-10-10 09:49:42.393133+00	2026-10-10 09:49:42.393133+00
 1050	1042	2022-09-07	2022-09-09	2022	9	377	f	4.0	f	English	Read before	Bought	\N	\N	\N	\N	2026-10-10 09:49:42.46535+00	2026-10-10 09:49:42.46535+00
 1051	1043	2022-09-08	2022-12-30	2022	12	220	f	4.0	f	English	New to me	Downloaded	\N	\N	\N	\N	2026-10-10 09:49:42.568883+00	2026-10-10 09:49:42.568883+00
-1052	1044	2022-09-09	\N	2022	9	384	t	\N	f	English	Read before	Downloaded	\N	\N	\N	\N	2026-10-10 09:49:42.580898+00	2026-10-10 09:49:42.580898+00
 1053	1044	2024-03-17	2024-03-18	2024	3	364	f	5.0	f	English	Read before	Bought	character names	\N	\N	\N	2026-10-10 09:49:42.586825+00	2026-10-10 09:49:42.586825+00
 1054	1045	2022-09-10	2022-11-02	2022	11	251	f	3.0	f	English	New to me	Bought	creatures & animals	\N	\N	\N	2026-10-10 09:49:42.784024+00	2026-10-10 09:49:42.784024+00
 1055	1046	2022-09-10	2022-09-10	2022	9	151	f	3.0	f	English	Read before	Bought	\N	\N	\N	\N	2026-10-10 09:49:42.850857+00	2026-10-10 09:49:42.850857+00
@@ -8668,7 +9570,6 @@ COPY public.reading (id, book_id, date_started, date_finished, reading_year, mon
 1439	1429	2025-11-27	2025-11-29	2025	11	188	f	4.0	f	English	New to me	Bought	"never"	\N	\N	\N	2026-10-10 09:50:24.461052+00	2026-10-10 09:50:24.461052+00
 1440	1430	2025-11-30	2025-12-01	2025	11	368	f	4.0	f	English	Read before	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:24.559071+00	2026-10-10 09:50:24.559071+00
 1441	1431	2025-12-01	2025-12-17	2025	12	303	f	2.0	f	English	New to me	Downloaded	\N	\N	hat, scarf or gloves on the cover	\N	2026-10-10 09:50:24.763924+00	2026-10-10 09:50:24.763924+00
-1442	1432	2025-12-01	2025-12-05	2025	12	203	f	1.0	f	English	New to me	Bought	\N	\N	word 'library' in the title	\N	2026-10-10 09:50:24.968657+00	2026-10-10 09:50:24.968657+00
 1443	1433	2025-12-02	\N	2025	12	97	t	\N	f	English	Read before	Downloaded	\N	\N	MC with a geographical first name	\N	2026-10-10 09:50:25.171806+00	2026-10-10 09:50:25.171806+00
 1444	1434	2025-12-06	2025-12-07	2025	12	343	f	3.5	f	English	New to me	Bought	\N	monochromatic	bilingual MC	\N	2026-10-10 09:50:25.366621+00	2026-10-10 09:50:25.366621+00
 1445	1435	2025-12-09	2025-12-09	2025	12	169	f	3.0	f	English	Read before	Downloaded	\N	\N	Christmas novella	\N	2026-10-10 09:50:25.462174+00	2026-10-10 09:50:25.462174+00
@@ -8678,7 +9579,6 @@ COPY public.reading (id, book_id, date_started, date_finished, reading_year, mon
 1449	1439	2025-12-18	2025-12-23	2025	12	270	f	3.5	f	English	New to me	Downloaded	\N	\N	set during winter or in a snowy setting	\N	2026-10-10 09:50:26.451627+00	2026-10-10 09:50:26.451627+00
 1450	1440	2025-12-18	2025-12-19	2025	12	149	f	3.0	f	English	New to me	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:26.572745+00	2026-10-10 09:50:26.572745+00
 1451	1441	2025-12-20	2025-12-20	2025	12	147	f	5.0	f	English	New to me	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:26.850638+00	2026-10-10 09:50:26.850638+00
-1452	1442	2025-12-23	2025-12-31	2025	12	298	f	3.5	f	English	Read before	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:26.868222+00	2026-10-10 09:50:26.868222+00
 1453	1443	2026-01-01	2026-01-03	2026	1	305	f	3.5	f	English	Read before	Owned	\N	\N	first book of 2026	\N	2026-10-10 09:50:26.962821+00	2026-10-10 09:50:26.962821+00
 1454	1444	2026-01-01	2026-01-06	2026	1	181	f	2.0	f	English	New to me	Downloaded	\N	\N	a book with a blue or white cover	\N	2026-10-10 09:50:27.161744+00	2026-10-10 09:50:27.161744+00
 1455	1445	2026-01-03	2026-01-08	2026	1	660	f	3.0	f	English	Read before	Owned	\N	\N	a book your younger self would've loved	\N	2026-10-10 09:50:27.250719+00	2026-10-10 09:50:27.250719+00
@@ -8757,7 +9657,6 @@ COPY public.reading (id, book_id, date_started, date_finished, reading_year, mon
 1528	1518	2026-07-06	2026-07-09	2026	7	277	f	3.0	f	English	New to me	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:39.568226+00	2026-10-10 09:50:39.568226+00
 1529	1519	2026-07-10	2026-07-11	2026	7	379	f	3.0	f	English	Read before	Owned	\N	metallic element	\N	\N	2026-10-10 09:50:39.675081+00	2026-10-10 09:50:39.675081+00
 1530	1520	2026-07-12	2026-07-14	2026	7	564	f	2.0	f	English	Read before	Bought	\N	\N	\N	\N	2026-10-10 09:50:39.857628+00	2026-10-10 09:50:39.857628+00
-1531	1521	2026-07-16	2026-07-20	2026	7	316	f	4.5	f	English	Read before	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:39.963282+00	2026-10-10 09:50:39.963282+00
 1532	1522	2026-07-16	2026-07-28	2026	7	427	f	4.5	f	English	Debut	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:40.259894+00	2026-10-10 09:50:40.259894+00
 1533	1523	2026-07-16	2026-07-18	2026	7	155	f	3.0	f	Croatian	New to me	Library	occupation	\N	\N	\N	2026-10-10 09:50:40.553374+00	2026-10-10 09:50:40.553374+00
 1534	1524	2026-07-16	2026-08-02	2026	7	294	f	2.0	f	English	New to me	Downloaded	\N	\N	\N	\N	2026-10-10 09:50:40.857464+00	2026-10-10 09:50:40.857464+00
@@ -8779,6 +9678,10 @@ COPY public.reading (id, book_id, date_started, date_finished, reading_year, mon
 1550	1540	2026-09-19	\N	2026	9	190	f	\N	f	English	Read before	Bought	\N	\N	a book featuring an invisible disability	\N	2026-10-10 09:50:43.871792+00	2026-10-10 09:50:43.871792+00
 1551	1541	2026-09-25	\N	2026	9	70	t	\N	f	English	Read before	Owned	\N	\N	\N	\N	2026-10-10 09:50:43.982027+00	2026-10-10 09:50:43.982027+00
 1552	1542	2026-10-07	\N	\N	\N	104	f	\N	f	Croatian	New to me	Library	\N	\N	a book that has been a celebrity book club pick	\N	2026-10-10 09:50:44.358303+00	2026-10-11 15:20:07.741843+00
+1052	1044	2022-09-09	\N	2022	9	\N	t	\N	f	English	Read before	Downloaded	\N	\N	\N	\N	2026-10-10 09:49:42.580898+00	2026-10-11 17:42:31.031492+00
+1442	1432	2025-12-01	2025-12-05	2025	12	203	f	1.0	f	English	New to me	Bought	\N	\N	word 'library' in the text	\N	2026-10-10 09:50:24.968657+00	2026-10-12 12:14:09.195969+00
+1531	1521	2026-07-16	2026-07-20	2026	7	316	f	4.5	f	English	Read before	Downloaded	\N	\N	a book featuring a secret identity	\N	2026-10-10 09:50:39.963282+00	2026-10-12 12:16:02.319903+00
+1452	1442	2025-12-23	2025-12-31	2025	12	298	f	3.5	f	English	Read before	Downloaded	\N	\N	your last read of 2025	\N	2026-10-10 09:50:26.868222+00	2026-10-12 12:16:33.893831+00
 \.
 
 
@@ -10447,6 +11350,8 @@ COPY public.reading_purpose (reading_id, purpose) FROM stdin;
 1552	Bookclub
 1552	BRBN Bingo
 1087	Buzzwordathon
+1531	BRBN Bingo
+1452	BRBN Bingo
 \.
 
 
@@ -10854,6 +11759,133 @@ COPY public.reading_tbr_prompt (reading_id, prompt) FROM stdin;
 --
 
 COPY public.series (id, name, dropped, created_at, updated_at) FROM stdin;
+128	A Good Girl's Guide to Murder	f	2026-10-11 15:56:54.639555+00	2026-10-11 15:56:54.639555+00
+129	A Vine Mess	t	2026-10-11 15:56:54.653725+00	2026-10-11 15:56:54.653725+00
+130	Alchemy of Secrets	t	2026-10-11 15:56:54.663349+00	2026-10-11 15:56:54.663349+00
+131	Alex Stern	t	2026-10-11 15:56:54.672461+00	2026-10-11 15:56:54.672461+00
+132	An Ember in the Ashes	t	2026-10-11 15:56:54.685189+00	2026-10-11 15:56:54.685189+00
+133	Arcana Academy	f	2026-10-11 15:56:54.704835+00	2026-10-11 15:56:54.704835+00
+134	Avalon Bay	t	2026-10-11 15:56:54.714904+00	2026-10-11 15:56:54.714904+00
+135	Beartown	t	2026-10-11 15:56:54.727386+00	2026-10-11 15:56:54.727386+00
+136	Beautiful	t	2026-10-11 15:56:54.73927+00	2026-10-11 15:56:54.73927+00
+137	Bellinger Sisters	f	2026-10-11 15:56:54.770269+00	2026-10-11 15:56:54.770269+00
+138	Between Earth and Sky	t	2026-10-11 15:56:54.779287+00	2026-10-11 15:56:54.779287+00
+139	Binti	t	2026-10-11 15:56:54.790998+00	2026-10-11 15:56:54.790998+00
+140	Bird Box	f	2026-10-11 15:56:54.804285+00	2026-10-11 15:56:54.804285+00
+141	Black Dagger Brotherhood	f	2026-10-11 15:56:54.814118+00	2026-10-11 15:56:54.814118+00
+142	Black Winter	t	2026-10-11 15:56:54.893149+00	2026-10-11 15:56:54.893149+00
+143	Boston Belles	t	2026-10-11 15:56:54.907546+00	2026-10-11 15:56:54.907546+00
+144	Bride	f	2026-10-11 15:56:54.926637+00	2026-10-11 15:56:54.926637+00
+145	Bridgerton	t	2026-10-11 15:56:54.935712+00	2026-10-11 15:56:54.935712+00
+146	Bright Falls	f	2026-10-11 15:56:54.970011+00	2026-10-11 15:56:54.970011+00
+147	Broken Dolls	t	2026-10-11 15:56:54.990166+00	2026-10-11 15:56:54.990166+00
+148	Bromance Book Club	f	2026-10-11 15:56:55.00921+00	2026-10-11 15:56:55.00921+00
+149	Chaotic Orbits	f	2026-10-11 15:56:55.02862+00	2026-10-11 15:56:55.02862+00
+150	Chestnut Springs	f	2026-10-11 15:56:55.040982+00	2026-10-11 15:56:55.040982+00
+151	Dance With My Demons	t	2026-10-11 15:56:55.060163+00	2026-10-11 15:56:55.060163+00
+152	Dark Forces	t	2026-10-11 15:56:55.077175+00	2026-10-11 15:56:55.077175+00
+153	Dating After the End of the World	f	2026-10-11 15:56:55.087317+00	2026-10-11 15:56:55.087317+00
+154	Deanna Madden	f	2026-10-11 15:56:55.09768+00	2026-10-11 15:56:55.09768+00
+155	Detective Elin Warner	t	2026-10-11 15:56:55.113618+00	2026-10-11 15:56:55.113618+00
+156	DNA Duo	f	2026-10-11 15:56:55.125428+00	2026-10-11 15:56:55.125428+00
+157	Dream Harbor	t	2026-10-11 15:56:55.135082+00	2026-10-11 15:56:55.135082+00
+158	Elderly Lady	t	2026-10-11 15:56:55.158153+00	2026-10-11 15:56:55.158153+00
+159	Empire of Blood	t	2026-10-11 15:56:55.167054+00	2026-10-11 15:56:55.167054+00
+160	Endgame	t	2026-10-11 15:56:55.176213+00	2026-10-11 15:56:55.176213+00
+161	Ernest Cunningham	f	2026-10-11 15:56:55.189346+00	2026-10-11 15:56:55.189346+00
+162	Fae & Alchemy	f	2026-10-11 15:56:55.20556+00	2026-10-11 15:56:55.20556+00
+163	Fayes hämnd	t	2026-10-11 15:56:55.218587+00	2026-10-11 15:56:55.218587+00
+164	Finlay Donovan	t	2026-10-11 15:56:55.23303+00	2026-10-11 15:56:55.23303+00
+165	Game Changers	t	2026-10-11 15:56:55.258407+00	2026-10-11 15:56:55.258407+00
+166	Glimmer Falls	t	2026-10-11 15:56:55.285731+00	2026-10-11 15:56:55.285731+00
+167	Gone to See the River Man	t	2026-10-11 15:56:55.29815+00	2026-10-11 15:56:55.29815+00
+168	Gravekeeper	t	2026-10-11 15:56:55.311232+00	2026-10-11 15:56:55.311232+00
+169	Harry Potter	f	2026-10-11 15:56:55.341822+00	2026-10-11 15:56:55.341822+00
+170	Heartstrings	t	2026-10-11 15:56:55.372168+00	2026-10-11 15:56:55.372168+00
+171	Holger Munch & Mia Kruger	t	2026-10-11 15:56:55.384542+00	2026-10-11 15:56:55.384542+00
+172	Hot & Hammered	t	2026-10-11 15:56:55.407912+00	2026-10-11 15:56:55.407912+00
+173	Ice Planet Barbarians	t	2026-10-11 15:56:55.422121+00	2026-10-11 15:56:55.422121+00
+174	Illuminae Files	t	2026-10-11 15:56:55.487602+00	2026-10-11 15:56:55.487602+00
+175	In the Company of Killers	t	2026-10-11 15:56:55.500754+00	2026-10-11 15:56:55.500754+00
+176	Into Darkness	f	2026-10-11 15:56:55.531631+00	2026-10-11 15:56:55.531631+00
+177	Island Bites	t	2026-10-11 15:56:55.54319+00	2026-10-11 15:56:55.54319+00
+178	Kings of Sin	f	2026-10-11 15:56:55.555171+00	2026-10-11 15:56:55.555171+00
+179	LitenVerse	t	2026-10-11 15:56:55.578652+00	2026-10-11 15:56:55.578652+00
+180	Losing It	f	2026-10-11 15:56:55.587413+00	2026-10-11 15:56:55.587413+00
+181	Loveboat, Taipei	t	2026-10-11 15:56:55.598686+00	2026-10-11 15:56:55.598686+00
+182	Lovelight	t	2026-10-11 15:56:55.610964+00	2026-10-11 15:56:55.610964+00
+183	Maple Hills	t	2026-10-11 15:56:55.626112+00	2026-10-11 15:56:55.626112+00
+184	Mindfuck	f	2026-10-11 15:56:55.637597+00	2026-10-11 15:56:55.637597+00
+185	Monk & Robot	t	2026-10-11 15:56:55.656001+00	2026-10-11 15:56:55.656001+00
+186	Murderbot Diaries	t	2026-10-11 15:56:55.668282+00	2026-10-11 15:56:55.668282+00
+187	My Brilliant Friend	t	2026-10-11 15:56:55.69563+00	2026-10-11 15:56:55.69563+00
+188	My Vampires	f	2026-10-11 15:56:55.710025+00	2026-10-11 15:56:55.710025+00
+189	Nashville Neighbourhood	t	2026-10-11 15:56:55.723103+00	2026-10-11 15:56:55.723103+00
+190	Naughty or Nice	f	2026-10-11 15:56:55.748165+00	2026-10-11 15:56:55.748165+00
+191	Necessary Evils	t	2026-10-11 15:56:55.770786+00	2026-10-11 15:56:55.770786+00
+192	Nick and Holly	t	2026-10-11 15:56:55.794602+00	2026-10-11 15:56:55.794602+00
+193	Night's Edge	f	2026-10-11 15:56:55.823048+00	2026-10-11 15:56:55.823048+00
+194	Not in Love	f	2026-10-11 15:56:55.83148+00	2026-10-11 15:56:55.83148+00
+195	O'Neil Brothers	f	2026-10-11 15:56:55.840322+00	2026-10-11 15:56:55.840322+00
+196	Off the Ice	f	2026-10-11 15:56:55.851749+00	2026-10-11 15:56:55.851749+00
+197	One Night	t	2026-10-11 15:56:55.870099+00	2026-10-11 15:56:55.870099+00
+199	Order of the Unseen	t	2026-10-11 15:56:55.899068+00	2026-10-11 15:56:55.899068+00
+200	Out	t	2026-10-11 15:56:55.915666+00	2026-10-11 15:56:55.915666+00
+201	Rachel Krall	t	2026-10-11 15:56:55.92413+00	2026-10-11 15:56:55.92413+00
+202	Rebel Blue Ranch	f	2026-10-11 15:56:55.932734+00	2026-10-11 15:56:55.932734+00
+203	Retrum	t	2026-10-11 15:56:55.947255+00	2026-10-11 15:56:55.947255+00
+204	Rizzoli & Isles	t	2026-10-11 15:56:55.957978+00	2026-10-11 15:56:55.957978+00
+205	Rolling in the Deep	f	2026-10-11 15:56:55.968016+00	2026-10-11 15:56:55.968016+00
+206	Say You'll Remember Me	f	2026-10-11 15:56:55.981383+00	2026-10-11 15:56:55.981383+00
+207	Silver Elite	f	2026-10-11 15:56:55.990777+00	2026-10-11 15:56:55.990777+00
+208	Starlight Grove	f	2026-10-11 15:56:56.001774+00	2026-10-11 15:56:56.001774+00
+209	Štorka	t	2026-10-11 15:56:56.020897+00	2026-10-11 15:56:56.020897+00
+210	Sweetwater Peak	f	2026-10-11 15:56:56.031847+00	2026-10-11 15:56:56.031847+00
+211	Sworn Soldier	t	2026-10-11 15:56:56.042099+00	2026-10-11 15:56:56.042099+00
+212	The Arrangement	f	2026-10-11 15:56:56.053867+00	2026-10-11 15:56:56.053867+00
+213	The Baby Dragon	t	2026-10-11 15:56:56.066102+00	2026-10-11 15:56:56.066102+00
+214	The Brown Sisters	f	2026-10-11 15:56:56.081664+00	2026-10-11 15:56:56.081664+00
+215	The Collector	t	2026-10-11 15:56:56.094971+00	2026-10-11 15:56:56.094971+00
+216	The Empyrean	f	2026-10-11 15:56:56.109268+00	2026-10-11 15:56:56.109268+00
+217	The First Sister	t	2026-10-11 15:56:56.129409+00	2026-10-11 15:56:56.129409+00
+218	The Girls I've Been	t	2026-10-11 15:56:56.141947+00	2026-10-11 15:56:56.141947+00
+219	The Housemaid	f	2026-10-11 15:56:56.151417+00	2026-10-11 15:56:56.151417+00
+220	The Hunger Games	f	2026-10-11 15:56:56.162863+00	2026-10-11 15:56:56.162863+00
+221	The Indian Lake Trilogy	t	2026-10-11 15:56:56.180731+00	2026-10-11 15:56:56.180731+00
+222	The Influencer	t	2026-10-11 15:56:56.192449+00	2026-10-11 15:56:56.192449+00
+223	The Kiss Quotient	t	2026-10-11 15:56:56.198404+00	2026-10-11 15:56:56.198404+00
+224	The Outsiders Sequence	f	2026-10-11 15:56:56.210247+00	2026-10-11 15:56:56.210247+00
+225	The Poppy War	t	2026-10-11 15:56:56.22761+00	2026-10-11 15:56:56.22761+00
+226	The Raven Cycle	f	2026-10-11 15:56:56.243503+00	2026-10-11 15:56:56.243503+00
+227	The Ruinous Love	f	2026-10-11 15:56:56.259864+00	2026-10-11 15:56:56.259864+00
+228	The Seasons of Carnage	f	2026-10-11 15:56:56.275597+00	2026-10-11 15:56:56.275597+00
+229	The Shining	t	2026-10-11 15:56:56.288218+00	2026-10-11 15:56:56.288218+00
+230	The Simple Wild	f	2026-10-11 15:56:56.300266+00	2026-10-11 15:56:56.300266+00
+231	The Sinners Duet	f	2026-10-11 15:56:56.315069+00	2026-10-11 15:56:56.315069+00
+232	The STEMinist Novellas	f	2026-10-11 15:56:56.324361+00	2026-10-11 15:56:56.324361+00
+233	The Thousandth Floor	f	2026-10-11 15:56:56.336374+00	2026-10-11 15:56:56.336374+00
+234	The Twilight Saga	t	2026-10-11 15:56:56.348017+00	2026-10-11 15:56:56.348017+00
+235	Themis Files	f	2026-10-11 15:56:56.365772+00	2026-10-11 15:56:56.365772+00
+236	These Witches Don't Burn	t	2026-10-11 15:56:56.377897+00	2026-10-11 15:56:56.377897+00
+237	Throne of Glass	t	2026-10-11 15:56:56.387029+00	2026-10-11 15:56:56.387029+00
+238	Thursday Murder Club	f	2026-10-11 15:56:56.413977+00	2026-10-11 15:56:56.413977+00
+239	Twisted	f	2026-10-11 15:56:56.432722+00	2026-10-11 15:56:56.432722+00
+240	Under the Mistletoe	t	2026-10-11 15:56:56.448115+00	2026-10-11 15:56:56.448115+00
+241	Vampire Companion	t	2026-10-11 15:56:56.457815+00	2026-10-11 15:56:56.457815+00
+242	Vancouver Storm	f	2026-10-11 15:56:56.467297+00	2026-10-11 15:56:56.467297+00
+243	Villains	f	2026-10-11 15:56:56.484885+00	2026-10-11 15:56:56.484885+00
+244	Vipers	f	2026-10-11 15:56:56.497022+00	2026-10-11 15:56:56.497022+00
+245	Warcross	t	2026-10-11 15:56:56.509194+00	2026-10-11 15:56:56.509194+00
+246	Wayfarers	f	2026-10-11 15:56:56.518514+00	2026-10-11 15:56:56.518514+00
+247	Wayward Children	t	2026-10-11 15:56:56.535117+00	2026-10-11 15:56:56.535117+00
+248	Wayward Pines	t	2026-10-11 15:56:56.584597+00	2026-10-11 15:56:56.584597+00
+249	We Solve Murders	f	2026-10-11 15:56:56.597203+00	2026-10-11 15:56:56.597203+00
+250	When in Rome	f	2026-10-11 15:56:56.606711+00	2026-10-11 15:56:56.606711+00
+251	Wolves of Ruin	f	2026-10-11 15:56:56.621472+00	2026-10-11 15:56:56.621472+00
+252	Wraith Kings	t	2026-10-11 15:56:56.6333+00	2026-10-11 15:56:56.6333+00
+253	Written in the Stars	f	2026-10-11 15:56:56.647631+00	2026-10-11 15:56:56.647631+00
+254	Život	t	2026-10-11 15:56:56.659312+00	2026-10-11 15:56:56.659312+00
+198	One of Us Is Lying	t	2026-10-11 15:56:55.88762+00	2026-10-11 16:57:54.486505+00
 \.
 
 
@@ -10862,6 +11894,511 @@ COPY public.series (id, name, dropped, created_at, updated_at) FROM stdin;
 --
 
 COPY public.series_entry (id, series_id, number, book_id, created_at, updated_at) FROM stdin;
+491	128	1.00	1342	2026-10-11 15:56:54.643664+00	2026-10-11 15:56:54.643664+00
+492	128	2.00	2304	2026-10-11 15:56:54.646967+00	2026-10-11 15:56:54.646967+00
+493	128	3.00	2305	2026-10-11 15:56:54.650382+00	2026-10-11 15:56:54.650382+00
+494	129	1.00	1072	2026-10-11 15:56:54.657237+00	2026-10-11 15:56:54.657237+00
+495	129	2.00	3237	2026-10-11 15:56:54.660275+00	2026-10-11 15:56:54.660275+00
+496	130	1.00	1433	2026-10-11 15:56:54.666189+00	2026-10-11 15:56:54.666189+00
+497	130	2.00	\N	2026-10-11 15:56:54.669187+00	2026-10-11 15:56:54.669187+00
+498	131	1.00	1459	2026-10-11 15:56:54.675254+00	2026-10-11 15:56:54.675254+00
+499	131	2.00	3238	2026-10-11 15:56:54.678337+00	2026-10-11 15:56:54.678337+00
+500	131	3.00	3239	2026-10-11 15:56:54.681463+00	2026-10-11 15:56:54.681463+00
+501	132	1.00	783	2026-10-11 15:56:54.690065+00	2026-10-11 15:56:54.690065+00
+502	132	2.00	3240	2026-10-11 15:56:54.693616+00	2026-10-11 15:56:54.693616+00
+503	132	3.00	3241	2026-10-11 15:56:54.696504+00	2026-10-11 15:56:54.696504+00
+504	132	4.00	3242	2026-10-11 15:56:54.70035+00	2026-10-11 15:56:54.70035+00
+505	133	1.00	1397	2026-10-11 15:56:54.707828+00	2026-10-11 15:56:54.707828+00
+506	133	2.00	2377	2026-10-11 15:56:54.711741+00	2026-10-11 15:56:54.711741+00
+507	134	1.00	1240	2026-10-11 15:56:54.717956+00	2026-10-11 15:56:54.717956+00
+508	134	2.00	3243	2026-10-11 15:56:54.721191+00	2026-10-11 15:56:54.721191+00
+509	134	3.00	3244	2026-10-11 15:56:54.724445+00	2026-10-11 15:56:54.724445+00
+510	135	1.00	883	2026-10-11 15:56:54.730209+00	2026-10-11 15:56:54.730209+00
+511	135	2.00	3245	2026-10-11 15:56:54.733582+00	2026-10-11 15:56:54.733582+00
+512	135	3.00	3246	2026-10-11 15:56:54.736461+00	2026-10-11 15:56:54.736461+00
+513	136	1.00	894	2026-10-11 15:56:54.74238+00	2026-10-11 15:56:54.74238+00
+514	136	1.50	898	2026-10-11 15:56:54.745293+00	2026-10-11 15:56:54.745293+00
+515	136	2.00	905	2026-10-11 15:56:54.749624+00	2026-10-11 15:56:54.749624+00
+516	136	2.50	908	2026-10-11 15:56:54.753019+00	2026-10-11 15:56:54.753019+00
+517	136	3.00	949	2026-10-11 15:56:54.75601+00	2026-10-11 15:56:54.75601+00
+518	136	3.50	961	2026-10-11 15:56:54.758849+00	2026-10-11 15:56:54.758849+00
+519	136	3.60	963	2026-10-11 15:56:54.761611+00	2026-10-11 15:56:54.761611+00
+520	136	4.00	1000	2026-10-11 15:56:54.764431+00	2026-10-11 15:56:54.764431+00
+521	136	5.00	3247	2026-10-11 15:56:54.767174+00	2026-10-11 15:56:54.767174+00
+522	137	1.00	1115	2026-10-11 15:56:54.773421+00	2026-10-11 15:56:54.773421+00
+523	137	2.00	1123	2026-10-11 15:56:54.776341+00	2026-10-11 15:56:54.776341+00
+524	138	1.00	910	2026-10-11 15:56:54.782473+00	2026-10-11 15:56:54.782473+00
+525	138	2.00	3248	2026-10-11 15:56:54.785366+00	2026-10-11 15:56:54.785366+00
+526	138	3.00	3249	2026-10-11 15:56:54.788109+00	2026-10-11 15:56:54.788109+00
+527	139	1.00	907	2026-10-11 15:56:54.794049+00	2026-10-11 15:56:54.794049+00
+528	139	2.00	3250	2026-10-11 15:56:54.796879+00	2026-10-11 15:56:54.796879+00
+529	139	3.00	3251	2026-10-11 15:56:54.799628+00	2026-10-11 15:56:54.799628+00
+530	140	1.00	3252	2026-10-11 15:56:54.80731+00	2026-10-11 15:56:54.80731+00
+531	140	2.00	868	2026-10-11 15:56:54.810749+00	2026-10-11 15:56:54.810749+00
+532	141	0.00	3253	2026-10-11 15:56:54.818019+00	2026-10-11 15:56:54.818019+00
+533	141	1.00	1003	2026-10-11 15:56:54.82203+00	2026-10-11 15:56:54.82203+00
+534	141	2.00	3254	2026-10-11 15:56:54.825064+00	2026-10-11 15:56:54.825064+00
+535	141	3.00	3255	2026-10-11 15:56:54.827965+00	2026-10-11 15:56:54.827965+00
+536	141	4.00	3256	2026-10-11 15:56:54.83099+00	2026-10-11 15:56:54.83099+00
+537	141	5.00	3257	2026-10-11 15:56:54.833815+00	2026-10-11 15:56:54.833815+00
+538	141	6.00	3258	2026-10-11 15:56:54.836569+00	2026-10-11 15:56:54.836569+00
+539	141	7.00	3259	2026-10-11 15:56:54.839346+00	2026-10-11 15:56:54.839346+00
+540	141	8.00	3260	2026-10-11 15:56:54.842271+00	2026-10-11 15:56:54.842271+00
+541	141	9.00	3261	2026-10-11 15:56:54.845191+00	2026-10-11 15:56:54.845191+00
+542	141	10.00	3262	2026-10-11 15:56:54.848355+00	2026-10-11 15:56:54.848355+00
+543	141	11.00	3263	2026-10-11 15:56:54.851176+00	2026-10-11 15:56:54.851176+00
+544	141	12.00	3264	2026-10-11 15:56:54.854182+00	2026-10-11 15:56:54.854182+00
+545	141	13.00	3265	2026-10-11 15:56:54.856983+00	2026-10-11 15:56:54.856983+00
+546	141	14.00	3266	2026-10-11 15:56:54.859727+00	2026-10-11 15:56:54.859727+00
+547	141	15.00	2444	2026-10-11 15:56:54.862676+00	2026-10-11 15:56:54.862676+00
+548	141	16.00	2445	2026-10-11 15:56:54.865403+00	2026-10-11 15:56:54.865403+00
+549	141	17.00	3267	2026-10-11 15:56:54.868167+00	2026-10-11 15:56:54.868167+00
+550	141	18.00	3268	2026-10-11 15:56:54.871141+00	2026-10-11 15:56:54.871141+00
+551	141	19.00	3269	2026-10-11 15:56:54.874188+00	2026-10-11 15:56:54.874188+00
+552	141	20.00	3270	2026-10-11 15:56:54.877306+00	2026-10-11 15:56:54.877306+00
+553	141	21.00	3271	2026-10-11 15:56:54.880124+00	2026-10-11 15:56:54.880124+00
+554	141	22.00	3272	2026-10-11 15:56:54.884128+00	2026-10-11 15:56:54.884128+00
+555	141	23.00	3273	2026-10-11 15:56:54.886975+00	2026-10-11 15:56:54.886975+00
+556	141	24.00	3274	2026-10-11 15:56:54.890336+00	2026-10-11 15:56:54.890336+00
+557	142	1.00	1286	2026-10-11 15:56:54.895868+00	2026-10-11 15:56:54.895868+00
+558	142	2.00	3275	2026-10-11 15:56:54.898662+00	2026-10-11 15:56:54.898662+00
+559	142	3.00	3276	2026-10-11 15:56:54.901457+00	2026-10-11 15:56:54.901457+00
+560	142	4.00	3277	2026-10-11 15:56:54.904112+00	2026-10-11 15:56:54.904112+00
+561	143	0.50	1062	2026-10-11 15:56:54.910336+00	2026-10-11 15:56:54.910336+00
+562	143	1.00	3278	2026-10-11 15:56:54.913326+00	2026-10-11 15:56:54.913326+00
+563	143	2.00	3279	2026-10-11 15:56:54.917477+00	2026-10-11 15:56:54.917477+00
+564	143	3.00	3280	2026-10-11 15:56:54.920172+00	2026-10-11 15:56:54.920172+00
+565	143	4.00	3281	2026-10-11 15:56:54.923822+00	2026-10-11 15:56:54.923822+00
+566	144	1.00	1271	2026-10-11 15:56:54.929515+00	2026-10-11 15:56:54.929515+00
+567	144	2.00	1413	2026-10-11 15:56:54.932531+00	2026-10-11 15:56:54.932531+00
+568	145	1.00	935	2026-10-11 15:56:54.938654+00	2026-10-11 15:56:54.938654+00
+569	145	2.00	3282	2026-10-11 15:56:54.941768+00	2026-10-11 15:56:54.941768+00
+570	145	3.00	3283	2026-10-11 15:56:54.94457+00	2026-10-11 15:56:54.94457+00
+571	145	4.00	3284	2026-10-11 15:56:54.952129+00	2026-10-11 15:56:54.952129+00
+572	145	5.00	3285	2026-10-11 15:56:54.956068+00	2026-10-11 15:56:54.956068+00
+573	145	6.00	3286	2026-10-11 15:56:54.960092+00	2026-10-11 15:56:54.960092+00
+574	145	7.00	3287	2026-10-11 15:56:54.963534+00	2026-10-11 15:56:54.963534+00
+575	145	8.00	3288	2026-10-11 15:56:54.966595+00	2026-10-11 15:56:54.966595+00
+576	146	1.00	1361	2026-10-11 15:56:54.973938+00	2026-10-11 15:56:54.973938+00
+577	146	2.00	1507	2026-10-11 15:56:54.980466+00	2026-10-11 15:56:54.980466+00
+578	146	3.00	2289	2026-10-11 15:56:54.987002+00	2026-10-11 15:56:54.987002+00
+579	147	1.00	1121	2026-10-11 15:56:54.993265+00	2026-10-11 15:56:54.993265+00
+580	147	2.00	3289	2026-10-11 15:56:55.003288+00	2026-10-11 15:56:55.003288+00
+581	148	1.00	2404	2026-10-11 15:56:55.012596+00	2026-10-11 15:56:55.012596+00
+582	148	2.00	854	2026-10-11 15:56:55.015631+00	2026-10-11 15:56:55.015631+00
+583	148	3.00	895	2026-10-11 15:56:55.018787+00	2026-10-11 15:56:55.018787+00
+584	148	4.00	971	2026-10-11 15:56:55.021892+00	2026-10-11 15:56:55.021892+00
+585	148	5.00	2693	2026-10-11 15:56:55.024966+00	2026-10-11 15:56:55.024966+00
+586	149	1.00	1457	2026-10-11 15:56:55.031625+00	2026-10-11 15:56:55.031625+00
+587	149	2.00	2831	2026-10-11 15:56:55.034535+00	2026-10-11 15:56:55.034535+00
+588	149	3.00	2832	2026-10-11 15:56:55.03775+00	2026-10-11 15:56:55.03775+00
+589	150	1.00	1246	2026-10-11 15:56:55.043965+00	2026-10-11 15:56:55.043965+00
+590	150	2.00	1484	2026-10-11 15:56:55.046854+00	2026-10-11 15:56:55.046854+00
+591	150	3.00	2298	2026-10-11 15:56:55.049655+00	2026-10-11 15:56:55.049655+00
+592	150	4.00	2297	2026-10-11 15:56:55.054112+00	2026-10-11 15:56:55.054112+00
+593	150	5.00	2351	2026-10-11 15:56:55.057009+00	2026-10-11 15:56:55.057009+00
+594	151	1.00	1383	2026-10-11 15:56:55.063139+00	2026-10-11 15:56:55.063139+00
+595	151	2.00	3290	2026-10-11 15:56:55.065992+00	2026-10-11 15:56:55.065992+00
+596	151	3.00	3291	2026-10-11 15:56:55.06882+00	2026-10-11 15:56:55.06882+00
+597	151	4.00	3292	2026-10-11 15:56:55.072021+00	2026-10-11 15:56:55.072021+00
+598	152	1.00	1527	2026-10-11 15:56:55.080334+00	2026-10-11 15:56:55.080334+00
+599	152	2.00	3005	2026-10-11 15:56:55.083623+00	2026-10-11 15:56:55.083623+00
+600	153	1.00	1447	2026-10-11 15:56:55.09041+00	2026-10-11 15:56:55.09041+00
+601	153	2.00	\N	2026-10-11 15:56:55.093737+00	2026-10-11 15:56:55.093737+00
+602	154	1.00	1081	2026-10-11 15:56:55.104729+00	2026-10-11 15:56:55.104729+00
+603	154	2.00	1084	2026-10-11 15:56:55.107761+00	2026-10-11 15:56:55.107761+00
+604	154	3.00	1089	2026-10-11 15:56:55.110671+00	2026-10-11 15:56:55.110671+00
+605	155	1.00	978	2026-10-11 15:56:55.116563+00	2026-10-11 15:56:55.116563+00
+606	155	2.00	3293	2026-10-11 15:56:55.119485+00	2026-10-11 15:56:55.119485+00
+607	155	3.00	3294	2026-10-11 15:56:55.122511+00	2026-10-11 15:56:55.122511+00
+608	156	1.00	946	2026-10-11 15:56:55.128343+00	2026-10-11 15:56:55.128343+00
+609	156	2.00	1358	2026-10-11 15:56:55.13206+00	2026-10-11 15:56:55.13206+00
+610	157	1.00	1258	2026-10-11 15:56:55.138044+00	2026-10-11 15:56:55.138044+00
+611	157	2.00	1400	2026-10-11 15:56:55.141+00	2026-10-11 15:56:55.141+00
+612	157	3.00	2354	2026-10-11 15:56:55.14384+00	2026-10-11 15:56:55.14384+00
+613	157	4.00	3295	2026-10-11 15:56:55.146789+00	2026-10-11 15:56:55.146789+00
+614	157	5.00	3296	2026-10-11 15:56:55.152137+00	2026-10-11 15:56:55.152137+00
+615	157	6.00	3297	2026-10-11 15:56:55.155183+00	2026-10-11 15:56:55.155183+00
+616	158	1.00	1092	2026-10-11 15:56:55.161081+00	2026-10-11 15:56:55.161081+00
+617	158	2.00	3298	2026-10-11 15:56:55.164158+00	2026-10-11 15:56:55.164158+00
+618	159	1.00	1455	2026-10-11 15:56:55.1702+00	2026-10-11 15:56:55.1702+00
+619	159	2.00	3299	2026-10-11 15:56:55.17309+00	2026-10-11 15:56:55.17309+00
+620	160	1.00	1118	2026-10-11 15:56:55.179196+00	2026-10-11 15:56:55.179196+00
+621	160	2.00	3300	2026-10-11 15:56:55.182655+00	2026-10-11 15:56:55.182655+00
+622	160	3.00	3301	2026-10-11 15:56:55.186093+00	2026-10-11 15:56:55.186093+00
+623	161	1.00	1153	2026-10-11 15:56:55.192285+00	2026-10-11 15:56:55.192285+00
+624	161	2.00	2512	2026-10-11 15:56:55.196153+00	2026-10-11 15:56:55.196153+00
+625	161	3.00	3302	2026-10-11 15:56:55.199287+00	2026-10-11 15:56:55.199287+00
+626	161	4.00	3303	2026-10-11 15:56:55.202327+00	2026-10-11 15:56:55.202327+00
+627	162	1.00	1298	2026-10-11 15:56:55.208634+00	2026-10-11 15:56:55.208634+00
+628	162	2.00	1445	2026-10-11 15:56:55.212258+00	2026-10-11 15:56:55.212258+00
+629	162	3.00	\N	2026-10-11 15:56:55.215589+00	2026-10-11 15:56:55.215589+00
+630	163	1.00	918	2026-10-11 15:56:55.222296+00	2026-10-11 15:56:55.222296+00
+631	163	2.00	3304	2026-10-11 15:56:55.225537+00	2026-10-11 15:56:55.225537+00
+632	163	3.00	3305	2026-10-11 15:56:55.229409+00	2026-10-11 15:56:55.229409+00
+633	164	1.00	955	2026-10-11 15:56:55.236088+00	2026-10-11 15:56:55.236088+00
+634	164	2.00	1061	2026-10-11 15:56:55.239077+00	2026-10-11 15:56:55.239077+00
+635	164	3.00	3306	2026-10-11 15:56:55.243762+00	2026-10-11 15:56:55.243762+00
+636	164	4.00	3307	2026-10-11 15:56:55.246763+00	2026-10-11 15:56:55.246763+00
+637	164	5.00	3308	2026-10-11 15:56:55.24968+00	2026-10-11 15:56:55.24968+00
+638	164	6.00	3309	2026-10-11 15:56:55.252538+00	2026-10-11 15:56:55.252538+00
+639	164	7.00	3310	2026-10-11 15:56:55.255454+00	2026-10-11 15:56:55.255454+00
+640	165	1.00	2816	2026-10-11 15:56:55.264337+00	2026-10-11 15:56:55.264337+00
+641	165	2.00	1502	2026-10-11 15:56:55.267346+00	2026-10-11 15:56:55.267346+00
+642	165	3.00	2819	2026-10-11 15:56:55.270673+00	2026-10-11 15:56:55.270673+00
+643	165	4.00	2818	2026-10-11 15:56:55.27382+00	2026-10-11 15:56:55.27382+00
+644	165	5.00	2817	2026-10-11 15:56:55.276851+00	2026-10-11 15:56:55.276851+00
+645	165	6.00	2809	2026-10-11 15:56:55.279836+00	2026-10-11 15:56:55.279836+00
+646	165	7.00	3311	2026-10-11 15:56:55.282858+00	2026-10-11 15:56:55.282858+00
+647	166	1.00	1323	2026-10-11 15:56:55.288999+00	2026-10-11 15:56:55.288999+00
+648	166	2.00	3312	2026-10-11 15:56:55.292084+00	2026-10-11 15:56:55.292084+00
+649	166	3.00	3313	2026-10-11 15:56:55.295042+00	2026-10-11 15:56:55.295042+00
+650	167	1.00	1203	2026-10-11 15:56:55.301214+00	2026-10-11 15:56:55.301214+00
+651	167	2.00	3314	2026-10-11 15:56:55.304095+00	2026-10-11 15:56:55.304095+00
+652	168	1.00	1002	2026-10-11 15:56:55.317864+00	2026-10-11 15:56:55.317864+00
+653	168	2.00	3315	2026-10-11 15:56:55.326548+00	2026-10-11 15:56:55.326548+00
+654	168	3.00	3316	2026-10-11 15:56:55.329718+00	2026-10-11 15:56:55.329718+00
+655	168	4.00	3317	2026-10-11 15:56:55.332986+00	2026-10-11 15:56:55.332986+00
+656	168	5.00	3318	2026-10-11 15:56:55.335911+00	2026-10-11 15:56:55.335911+00
+657	169	1.00	1204	2026-10-11 15:56:55.345528+00	2026-10-11 15:56:55.345528+00
+658	169	2.00	1206	2026-10-11 15:56:55.350119+00	2026-10-11 15:56:55.350119+00
+659	169	3.00	1207	2026-10-11 15:56:55.353506+00	2026-10-11 15:56:55.353506+00
+660	169	4.00	1208	2026-10-11 15:56:55.356748+00	2026-10-11 15:56:55.356748+00
+661	169	5.00	1209	2026-10-11 15:56:55.359674+00	2026-10-11 15:56:55.359674+00
+662	169	6.00	1210	2026-10-11 15:56:55.362741+00	2026-10-11 15:56:55.362741+00
+663	169	7.00	1212	2026-10-11 15:56:55.366266+00	2026-10-11 15:56:55.366266+00
+664	169	8.00	3319	2026-10-11 15:56:55.369078+00	2026-10-11 15:56:55.369078+00
+665	170	1.00	1376	2026-10-11 15:56:55.375151+00	2026-10-11 15:56:55.375151+00
+666	170	2.00	3320	2026-10-11 15:56:55.378097+00	2026-10-11 15:56:55.378097+00
+667	170	3.00	3321	2026-10-11 15:56:55.381073+00	2026-10-11 15:56:55.381073+00
+668	171	0.00	3322	2026-10-11 15:56:55.387451+00	2026-10-11 15:56:55.387451+00
+669	171	1.00	3323	2026-10-11 15:56:55.391518+00	2026-10-11 15:56:55.391518+00
+670	171	2.00	3324	2026-10-11 15:56:55.394638+00	2026-10-11 15:56:55.394638+00
+671	171	3.00	885	2026-10-11 15:56:55.397846+00	2026-10-11 15:56:55.397846+00
+672	171	4.00	3325	2026-10-11 15:56:55.401464+00	2026-10-11 15:56:55.401464+00
+673	171	5.00	3326	2026-10-11 15:56:55.404774+00	2026-10-11 15:56:55.404774+00
+674	172	1.00	3327	2026-10-11 15:56:55.411019+00	2026-10-11 15:56:55.411019+00
+675	172	2.00	3328	2026-10-11 15:56:55.416075+00	2026-10-11 15:56:55.416075+00
+676	172	3.00	1225	2026-10-11 15:56:55.419043+00	2026-10-11 15:56:55.419043+00
+677	173	1.00	1016	2026-10-11 15:56:55.425006+00	2026-10-11 15:56:55.425006+00
+678	173	2.00	3329	2026-10-11 15:56:55.42795+00	2026-10-11 15:56:55.42795+00
+679	173	3.00	3330	2026-10-11 15:56:55.43117+00	2026-10-11 15:56:55.43117+00
+680	173	4.00	3331	2026-10-11 15:56:55.434154+00	2026-10-11 15:56:55.434154+00
+681	173	5.00	3332	2026-10-11 15:56:55.437155+00	2026-10-11 15:56:55.437155+00
+682	173	6.00	3333	2026-10-11 15:56:55.441054+00	2026-10-11 15:56:55.441054+00
+683	173	7.00	3334	2026-10-11 15:56:55.444047+00	2026-10-11 15:56:55.444047+00
+684	173	8.00	3335	2026-10-11 15:56:55.447251+00	2026-10-11 15:56:55.447251+00
+685	173	9.00	3336	2026-10-11 15:56:55.450163+00	2026-10-11 15:56:55.450163+00
+686	173	10.00	3337	2026-10-11 15:56:55.452979+00	2026-10-11 15:56:55.452979+00
+687	173	11.00	3338	2026-10-11 15:56:55.455902+00	2026-10-11 15:56:55.455902+00
+688	173	12.00	3339	2026-10-11 15:56:55.458814+00	2026-10-11 15:56:55.458814+00
+689	173	13.00	3340	2026-10-11 15:56:55.461684+00	2026-10-11 15:56:55.461684+00
+690	173	14.00	3341	2026-10-11 15:56:55.465809+00	2026-10-11 15:56:55.465809+00
+691	173	15.00	3342	2026-10-11 15:56:55.469116+00	2026-10-11 15:56:55.469116+00
+692	173	16.00	3343	2026-10-11 15:56:55.473694+00	2026-10-11 15:56:55.473694+00
+693	173	17.00	3344	2026-10-11 15:56:55.476693+00	2026-10-11 15:56:55.476693+00
+694	173	18.00	3345	2026-10-11 15:56:55.479887+00	2026-10-11 15:56:55.479887+00
+695	173	19.00	3346	2026-10-11 15:56:55.483409+00	2026-10-11 15:56:55.483409+00
+696	174	1.00	775	2026-10-11 15:56:55.491037+00	2026-10-11 15:56:55.491037+00
+697	174	2.00	843	2026-10-11 15:56:55.49418+00	2026-10-11 15:56:55.49418+00
+698	174	3.00	3347	2026-10-11 15:56:55.497693+00	2026-10-11 15:56:55.497693+00
+699	175	1.00	1175	2026-10-11 15:56:55.503662+00	2026-10-11 15:56:55.503662+00
+700	175	2.00	1193	2026-10-11 15:56:55.506743+00	2026-10-11 15:56:55.506743+00
+701	175	3.00	1220	2026-10-11 15:56:55.509595+00	2026-10-11 15:56:55.509595+00
+702	175	4.00	1235	2026-10-11 15:56:55.513059+00	2026-10-11 15:56:55.513059+00
+703	175	5.00	1244	2026-10-11 15:56:55.516249+00	2026-10-11 15:56:55.516249+00
+704	175	6.00	1262	2026-10-11 15:56:55.519155+00	2026-10-11 15:56:55.519155+00
+705	175	7.00	1307	2026-10-11 15:56:55.525329+00	2026-10-11 15:56:55.525329+00
+706	175	8.00	2602	2026-10-11 15:56:55.52851+00	2026-10-11 15:56:55.52851+00
+707	176	1.00	1293	2026-10-11 15:56:55.534487+00	2026-10-11 15:56:55.534487+00
+708	176	2.00	1365	2026-10-11 15:56:55.537398+00	2026-10-11 15:56:55.537398+00
+709	176	3.00	1480	2026-10-11 15:56:55.540305+00	2026-10-11 15:56:55.540305+00
+710	177	1.00	1085	2026-10-11 15:56:55.546336+00	2026-10-11 15:56:55.546336+00
+711	177	2.00	3348	2026-10-11 15:56:55.549192+00	2026-10-11 15:56:55.549192+00
+712	177	3.00	3349	2026-10-11 15:56:55.552296+00	2026-10-11 15:56:55.552296+00
+713	178	1.00	1519	2026-10-11 15:56:55.558025+00	2026-10-11 15:56:55.558025+00
+714	178	2.00	2352	2026-10-11 15:56:55.561007+00	2026-10-11 15:56:55.561007+00
+715	178	3.00	2353	2026-10-11 15:56:55.564073+00	2026-10-11 15:56:55.564073+00
+716	178	4.00	3003	2026-10-11 15:56:55.56701+00	2026-10-11 15:56:55.56701+00
+717	178	5.00	3002	2026-10-11 15:56:55.569942+00	2026-10-11 15:56:55.569942+00
+718	178	6.00	3001	2026-10-11 15:56:55.57274+00	2026-10-11 15:56:55.57274+00
+719	178	7.00	3350	2026-10-11 15:56:55.575672+00	2026-10-11 15:56:55.575672+00
+720	179	1.00	1067	2026-10-11 15:56:55.581544+00	2026-10-11 15:56:55.581544+00
+721	179	2.00	3351	2026-10-11 15:56:55.584328+00	2026-10-11 15:56:55.584328+00
+722	180	1.00	947	2026-10-11 15:56:55.590197+00	2026-10-11 15:56:55.590197+00
+723	180	2.00	876	2026-10-11 15:56:55.593043+00	2026-10-11 15:56:55.593043+00
+724	180	3.00	954	2026-10-11 15:56:55.595813+00	2026-10-11 15:56:55.595813+00
+725	181	1.00	840	2026-10-11 15:56:55.601378+00	2026-10-11 15:56:55.601378+00
+726	181	2.00	3352	2026-10-11 15:56:55.605083+00	2026-10-11 15:56:55.605083+00
+727	181	3.00	3353	2026-10-11 15:56:55.608+00	2026-10-11 15:56:55.608+00
+728	182	1.00	1152	2026-10-11 15:56:55.613851+00	2026-10-11 15:56:55.613851+00
+729	182	2.00	3354	2026-10-11 15:56:55.616716+00	2026-10-11 15:56:55.616716+00
+730	182	3.00	3355	2026-10-11 15:56:55.619477+00	2026-10-11 15:56:55.619477+00
+731	182	4.00	3356	2026-10-11 15:56:55.622337+00	2026-10-11 15:56:55.622337+00
+732	183	1.00	1174	2026-10-11 15:56:55.629003+00	2026-10-11 15:56:55.629003+00
+733	183	2.00	3357	2026-10-11 15:56:55.631862+00	2026-10-11 15:56:55.631862+00
+734	183	3.00	3358	2026-10-11 15:56:55.634759+00	2026-10-11 15:56:55.634759+00
+735	184	1.00	967	2026-10-11 15:56:55.640381+00	2026-10-11 15:56:55.640381+00
+736	184	2.00	976	2026-10-11 15:56:55.643258+00	2026-10-11 15:56:55.643258+00
+737	184	3.00	1009	2026-10-11 15:56:55.646178+00	2026-10-11 15:56:55.646178+00
+738	184	4.00	1030	2026-10-11 15:56:55.650239+00	2026-10-11 15:56:55.650239+00
+739	184	5.00	1055	2026-10-11 15:56:55.653132+00	2026-10-11 15:56:55.653132+00
+740	185	1.00	1011	2026-10-11 15:56:55.658943+00	2026-10-11 15:56:55.658943+00
+741	185	2.00	3359	2026-10-11 15:56:55.661965+00	2026-10-11 15:56:55.661965+00
+742	186	1.00	1218	2026-10-11 15:56:55.67138+00	2026-10-11 15:56:55.67138+00
+743	186	2.00	3360	2026-10-11 15:56:55.67437+00	2026-10-11 15:56:55.67437+00
+744	186	3.00	3361	2026-10-11 15:56:55.677323+00	2026-10-11 15:56:55.677323+00
+745	186	4.00	3362	2026-10-11 15:56:55.680324+00	2026-10-11 15:56:55.680324+00
+746	186	5.00	3363	2026-10-11 15:56:55.683249+00	2026-10-11 15:56:55.683249+00
+747	186	6.00	3364	2026-10-11 15:56:55.686141+00	2026-10-11 15:56:55.686141+00
+748	186	7.00	3365	2026-10-11 15:56:55.689104+00	2026-10-11 15:56:55.689104+00
+749	186	8.00	3366	2026-10-11 15:56:55.692419+00	2026-10-11 15:56:55.692419+00
+750	187	1.00	927	2026-10-11 15:56:55.698514+00	2026-10-11 15:56:55.698514+00
+751	187	2.00	3367	2026-10-11 15:56:55.701372+00	2026-10-11 15:56:55.701372+00
+752	187	3.00	3368	2026-10-11 15:56:55.70428+00	2026-10-11 15:56:55.70428+00
+753	187	4.00	3369	2026-10-11 15:56:55.707104+00	2026-10-11 15:56:55.707104+00
+754	188	1.00	1537	2026-10-11 15:56:55.713019+00	2026-10-11 15:56:55.713019+00
+755	188	2.00	2615	2026-10-11 15:56:55.715859+00	2026-10-11 15:56:55.715859+00
+756	188	3.00	3370	2026-10-11 15:56:55.720084+00	2026-10-11 15:56:55.720084+00
+757	189	1.00	1332	2026-10-11 15:56:55.726046+00	2026-10-11 15:56:55.726046+00
+758	189	2.00	3371	2026-10-11 15:56:55.729124+00	2026-10-11 15:56:55.729124+00
+759	189	3.00	3372	2026-10-11 15:56:55.732419+00	2026-10-11 15:56:55.732419+00
+760	189	4.00	3373	2026-10-11 15:56:55.738187+00	2026-10-11 15:56:55.738187+00
+761	189	5.00	3374	2026-10-11 15:56:55.742083+00	2026-10-11 15:56:55.742083+00
+762	189	6.00	3375	2026-10-11 15:56:55.744997+00	2026-10-11 15:56:55.744997+00
+763	190	1.00	1439	2026-10-11 15:56:55.753549+00	2026-10-11 15:56:55.753549+00
+764	190	2.00	1442	2026-10-11 15:56:55.762677+00	2026-10-11 15:56:55.762677+00
+765	190	3.00	2388	2026-10-11 15:56:55.767421+00	2026-10-11 15:56:55.767421+00
+766	191	1.00	1334	2026-10-11 15:56:55.773727+00	2026-10-11 15:56:55.773727+00
+767	191	2.00	3376	2026-10-11 15:56:55.776694+00	2026-10-11 15:56:55.776694+00
+768	191	3.00	3377	2026-10-11 15:56:55.779467+00	2026-10-11 15:56:55.779467+00
+769	191	4.00	3378	2026-10-11 15:56:55.782353+00	2026-10-11 15:56:55.782353+00
+770	191	5.00	3379	2026-10-11 15:56:55.785197+00	2026-10-11 15:56:55.785197+00
+771	191	6.00	3380	2026-10-11 15:56:55.787909+00	2026-10-11 15:56:55.787909+00
+772	191	7.00	3381	2026-10-11 15:56:55.791345+00	2026-10-11 15:56:55.791345+00
+773	192	1.00	1007	2026-10-11 15:56:55.797317+00	2026-10-11 15:56:55.797317+00
+774	192	2.00	1022	2026-10-11 15:56:55.810272+00	2026-10-11 15:56:55.810272+00
+775	192	3.00	3382	2026-10-11 15:56:55.813903+00	2026-10-11 15:56:55.813903+00
+776	192	4.00	3383	2026-10-11 15:56:55.816786+00	2026-10-11 15:56:55.816786+00
+777	192	5.00	3384	2026-10-11 15:56:55.81974+00	2026-10-11 15:56:55.81974+00
+778	193	1.00	1178	2026-10-11 15:56:55.825826+00	2026-10-11 15:56:55.825826+00
+779	193	2.00	2685	2026-10-11 15:56:55.828682+00	2026-10-11 15:56:55.828682+00
+780	194	1.00	1269	2026-10-11 15:56:55.834448+00	2026-10-11 15:56:55.834448+00
+781	194	2.00	1386	2026-10-11 15:56:55.837264+00	2026-10-11 15:56:55.837264+00
+782	195	1.00	878	2026-10-11 15:56:55.843083+00	2026-10-11 15:56:55.843083+00
+783	195	2.00	958	2026-10-11 15:56:55.845965+00	2026-10-11 15:56:55.845965+00
+784	195	3.00	1008	2026-10-11 15:56:55.848795+00	2026-10-11 15:56:55.848795+00
+785	196	1.00	1338	2026-10-11 15:56:55.854578+00	2026-10-11 15:56:55.854578+00
+786	196	2.00	1427	2026-10-11 15:56:55.857378+00	2026-10-11 15:56:55.857378+00
+787	196	3.00	2348	2026-10-11 15:56:55.861126+00	2026-10-11 15:56:55.861126+00
+788	196	4.00	2372	2026-10-11 15:56:55.866101+00	2026-10-11 15:56:55.866101+00
+789	197	1.00	1018	2026-10-11 15:56:55.873147+00	2026-10-11 15:56:55.873147+00
+790	197	2.00	1019	2026-10-11 15:56:55.876095+00	2026-10-11 15:56:55.876095+00
+791	197	3.00	3385	2026-10-11 15:56:55.878862+00	2026-10-11 15:56:55.878862+00
+792	197	4.00	3386	2026-10-11 15:56:55.882061+00	2026-10-11 15:56:55.882061+00
+793	197	5.00	3387	2026-10-11 15:56:55.884838+00	2026-10-11 15:56:55.884838+00
+794	198	1.00	3388	2026-10-11 15:56:55.890539+00	2026-10-11 15:56:55.890539+00
+795	198	2.00	784	2026-10-11 15:56:55.893386+00	2026-10-11 15:56:55.893386+00
+796	198	3.00	3389	2026-10-11 15:56:55.896206+00	2026-10-11 15:56:55.896206+00
+797	199	0.50	1028	2026-10-11 15:56:55.902279+00	2026-10-11 15:56:55.902279+00
+798	199	1.00	3390	2026-10-11 15:56:55.907102+00	2026-10-11 15:56:55.907102+00
+799	199	1.50	1148	2026-10-11 15:56:55.910074+00	2026-10-11 15:56:55.910074+00
+800	199	2.00	3391	2026-10-11 15:56:55.912864+00	2026-10-11 15:56:55.912864+00
+801	200	1.00	1373	2026-10-11 15:56:55.91843+00	2026-10-11 15:56:55.91843+00
+802	200	2.00	2595	2026-10-11 15:56:55.921307+00	2026-10-11 15:56:55.921307+00
+803	201	1.00	1301	2026-10-11 15:56:55.926955+00	2026-10-11 15:56:55.926955+00
+804	201	2.00	3392	2026-10-11 15:56:55.929803+00	2026-10-11 15:56:55.929803+00
+805	202	1.00	1389	2026-10-11 15:56:55.935537+00	2026-10-11 15:56:55.935537+00
+806	202	2.00	1391	2026-10-11 15:56:55.938433+00	2026-10-11 15:56:55.938433+00
+807	202	3.00	1393	2026-10-11 15:56:55.941321+00	2026-10-11 15:56:55.941321+00
+808	202	4.00	1396	2026-10-11 15:56:55.94432+00	2026-10-11 15:56:55.94432+00
+809	203	1.00	933	2026-10-11 15:56:55.950472+00	2026-10-11 15:56:55.950472+00
+810	203	2.00	3393	2026-10-11 15:56:55.953429+00	2026-10-11 15:56:55.953429+00
+811	204	1.00	948	2026-10-11 15:56:55.960818+00	2026-10-11 15:56:55.960818+00
+812	204	10.00	831	2026-10-11 15:56:55.964989+00	2026-10-11 15:56:55.964989+00
+813	205	0.50	806	2026-10-11 15:56:55.971048+00	2026-10-11 15:56:55.971048+00
+814	205	1.00	776	2026-10-11 15:56:55.975046+00	2026-10-11 15:56:55.975046+00
+815	206	1.00	1466	2026-10-11 15:56:55.984472+00	2026-10-11 15:56:55.984472+00
+816	206	2.00	2383	2026-10-11 15:56:55.98779+00	2026-10-11 15:56:55.98779+00
+817	207	1.00	1420	2026-10-11 15:56:55.995062+00	2026-10-11 15:56:55.995062+00
+818	207	2.00	2365	2026-10-11 15:56:55.998313+00	2026-10-11 15:56:55.998313+00
+819	208	1.00	1487	2026-10-11 15:56:56.005038+00	2026-10-11 15:56:56.005038+00
+820	208	2.00	2375	2026-10-11 15:56:56.00796+00	2026-10-11 15:56:56.00796+00
+821	208	3.00	2393	2026-10-11 15:56:56.010904+00	2026-10-11 15:56:56.010904+00
+822	208	4.00	3394	2026-10-11 15:56:56.014802+00	2026-10-11 15:56:56.014802+00
+823	208	5.00	3395	2026-10-11 15:56:56.017703+00	2026-10-11 15:56:56.017703+00
+824	209	1.00	959	2026-10-11 15:56:56.024436+00	2026-10-11 15:56:56.024436+00
+825	209	2.00	3396	2026-10-11 15:56:56.028239+00	2026-10-11 15:56:56.028239+00
+826	210	1.00	1446	2026-10-11 15:56:56.035973+00	2026-10-11 15:56:56.035973+00
+827	210	2.00	2386	2026-10-11 15:56:56.039145+00	2026-10-11 15:56:56.039145+00
+828	211	1.00	1080	2026-10-11 15:56:56.044872+00	2026-10-11 15:56:56.044872+00
+829	211	2.00	3397	2026-10-11 15:56:56.047795+00	2026-10-11 15:56:56.047795+00
+830	211	3.00	3398	2026-10-11 15:56:56.050805+00	2026-10-11 15:56:56.050805+00
+831	212	1.00	988	2026-10-11 15:56:56.056808+00	2026-10-11 15:56:56.056808+00
+832	212	2.00	1339	2026-10-11 15:56:56.060093+00	2026-10-11 15:56:56.060093+00
+833	212	3.00	1341	2026-10-11 15:56:56.063129+00	2026-10-11 15:56:56.063129+00
+834	213	1.00	1292	2026-10-11 15:56:56.069839+00	2026-10-11 15:56:56.069839+00
+835	213	2.00	3399	2026-10-11 15:56:56.072868+00	2026-10-11 15:56:56.072868+00
+836	213	3.00	3400	2026-10-11 15:56:56.075831+00	2026-10-11 15:56:56.075831+00
+837	213	4.00	3401	2026-10-11 15:56:56.078795+00	2026-10-11 15:56:56.078795+00
+838	214	1.00	972	2026-10-11 15:56:56.084454+00	2026-10-11 15:56:56.084454+00
+839	214	2.00	1064	2026-10-11 15:56:56.088153+00	2026-10-11 15:56:56.088153+00
+840	214	3.00	1183	2026-10-11 15:56:56.091464+00	2026-10-11 15:56:56.091464+00
+841	215	1.00	1036	2026-10-11 15:56:56.097884+00	2026-10-11 15:56:56.097884+00
+842	215	2.00	3402	2026-10-11 15:56:56.100805+00	2026-10-11 15:56:56.100805+00
+843	215	3.00	3403	2026-10-11 15:56:56.103562+00	2026-10-11 15:56:56.103562+00
+844	215	4.00	3404	2026-10-11 15:56:56.106396+00	2026-10-11 15:56:56.106396+00
+845	216	1.00	1483	2026-10-11 15:56:56.112206+00	2026-10-11 15:56:56.112206+00
+846	216	2.00	1503	2026-10-11 15:56:56.11504+00	2026-10-11 15:56:56.11504+00
+847	216	3.00	1540	2026-10-11 15:56:56.117813+00	2026-10-11 15:56:56.117813+00
+848	216	3.50	3019	2026-10-11 15:56:56.120649+00	2026-10-11 15:56:56.120649+00
+849	216	4.00	\N	2026-10-11 15:56:56.123721+00	2026-10-11 15:56:56.123721+00
+850	216	5.00	\N	2026-10-11 15:56:56.126599+00	2026-10-11 15:56:56.126599+00
+851	217	1.00	1180	2026-10-11 15:56:56.132311+00	2026-10-11 15:56:56.132311+00
+852	217	2.00	3405	2026-10-11 15:56:56.13513+00	2026-10-11 15:56:56.13513+00
+853	217	3.00	3406	2026-10-11 15:56:56.137962+00	2026-10-11 15:56:56.137962+00
+854	218	1.00	1366	2026-10-11 15:56:56.145318+00	2026-10-11 15:56:56.145318+00
+855	218	2.00	3407	2026-10-11 15:56:56.148565+00	2026-10-11 15:56:56.148565+00
+856	219	1.00	1461	2026-10-11 15:56:56.154237+00	2026-10-11 15:56:56.154237+00
+857	219	2.00	1536	2026-10-11 15:56:56.157172+00	2026-10-11 15:56:56.157172+00
+858	219	3.00	2343	2026-10-11 15:56:56.160012+00	2026-10-11 15:56:56.160012+00
+859	220	1.00	1309	2026-10-11 15:56:56.165755+00	2026-10-11 15:56:56.165755+00
+860	220	2.00	1310	2026-10-11 15:56:56.168667+00	2026-10-11 15:56:56.168667+00
+861	220	3.00	1311	2026-10-11 15:56:56.172007+00	2026-10-11 15:56:56.172007+00
+862	220	4.00	1315	2026-10-11 15:56:56.174777+00	2026-10-11 15:56:56.174777+00
+863	220	5.00	1316	2026-10-11 15:56:56.177613+00	2026-10-11 15:56:56.177613+00
+864	221	1.00	1497	2026-10-11 15:56:56.183595+00	2026-10-11 15:56:56.183595+00
+865	221	2.00	3408	2026-10-11 15:56:56.186426+00	2026-10-11 15:56:56.186426+00
+866	221	3.00	3409	2026-10-11 15:56:56.189241+00	2026-10-11 15:56:56.189241+00
+867	222	2.00	1075	2026-10-11 15:56:56.195358+00	2026-10-11 15:56:56.195358+00
+868	223	1.00	901	2026-10-11 15:56:56.201351+00	2026-10-11 15:56:56.201351+00
+869	223	2.00	3410	2026-10-11 15:56:56.204228+00	2026-10-11 15:56:56.204228+00
+870	223	3.00	3411	2026-10-11 15:56:56.207099+00	2026-10-11 15:56:56.207099+00
+871	224	1.00	1485	2026-10-11 15:56:56.213172+00	2026-10-11 15:56:56.213172+00
+872	224	2.00	1516	2026-10-11 15:56:56.216715+00	2026-10-11 15:56:56.216715+00
+873	224	3.00	3412	2026-10-11 15:56:56.224608+00	2026-10-11 15:56:56.224608+00
+874	225	1.00	1371	2026-10-11 15:56:56.230813+00	2026-10-11 15:56:56.230813+00
+875	225	2.00	3413	2026-10-11 15:56:56.233945+00	2026-10-11 15:56:56.233945+00
+876	225	3.00	3414	2026-10-11 15:56:56.240607+00	2026-10-11 15:56:56.240607+00
+877	226	1.00	787	2026-10-11 15:56:56.246325+00	2026-10-11 15:56:56.246325+00
+878	226	2.00	790	2026-10-11 15:56:56.249257+00	2026-10-11 15:56:56.249257+00
+879	226	3.00	865	2026-10-11 15:56:56.251996+00	2026-10-11 15:56:56.251996+00
+880	226	4.00	874	2026-10-11 15:56:56.254743+00	2026-10-11 15:56:56.254743+00
+881	227	1.00	1143	2026-10-11 15:56:56.262969+00	2026-10-11 15:56:56.262969+00
+882	227	2.00	1265	2026-10-11 15:56:56.266948+00	2026-10-11 15:56:56.266948+00
+883	227	3.00	1306	2026-10-11 15:56:56.269797+00	2026-10-11 15:56:56.269797+00
+884	227	3.50	1390	2026-10-11 15:56:56.272741+00	2026-10-11 15:56:56.272741+00
+885	228	1.00	1415	2026-10-11 15:56:56.278527+00	2026-10-11 15:56:56.278527+00
+886	228	2.00	2376	2026-10-11 15:56:56.281511+00	2026-10-11 15:56:56.281511+00
+887	228	3.00	3415	2026-10-11 15:56:56.284427+00	2026-10-11 15:56:56.284427+00
+888	229	1.00	977	2026-10-11 15:56:56.294203+00	2026-10-11 15:56:56.294203+00
+889	229	2.00	3416	2026-10-11 15:56:56.297373+00	2026-10-11 15:56:56.297373+00
+890	230	1.00	780	2026-10-11 15:56:56.303128+00	2026-10-11 15:56:56.303128+00
+891	230	2.00	845	2026-10-11 15:56:56.305974+00	2026-10-11 15:56:56.305974+00
+892	230	2.50	928	2026-10-11 15:56:56.308824+00	2026-10-11 15:56:56.308824+00
+893	230	3.00	2639	2026-10-11 15:56:56.311888+00	2026-10-11 15:56:56.311888+00
+894	231	1.00	1403	2026-10-11 15:56:56.318076+00	2026-10-11 15:56:56.318076+00
+895	231	2.00	1478	2026-10-11 15:56:56.321282+00	2026-10-11 15:56:56.321282+00
+896	232	1.00	1023	2026-10-11 15:56:56.327385+00	2026-10-11 15:56:56.327385+00
+897	232	2.00	1026	2026-10-11 15:56:56.330569+00	2026-10-11 15:56:56.330569+00
+898	232	3.00	1031	2026-10-11 15:56:56.333372+00	2026-10-11 15:56:56.333372+00
+899	233	1.00	881	2026-10-11 15:56:56.339509+00	2026-10-11 15:56:56.339509+00
+900	233	2.00	889	2026-10-11 15:56:56.342283+00	2026-10-11 15:56:56.342283+00
+901	233	3.00	896	2026-10-11 15:56:56.345061+00	2026-10-11 15:56:56.345061+00
+902	234	1.00	837	2026-10-11 15:56:56.350973+00	2026-10-11 15:56:56.350973+00
+903	234	2.00	3417	2026-10-11 15:56:56.353623+00	2026-10-11 15:56:56.353623+00
+904	234	3.00	3418	2026-10-11 15:56:56.35632+00	2026-10-11 15:56:56.35632+00
+905	234	4.00	3419	2026-10-11 15:56:56.35909+00	2026-10-11 15:56:56.35909+00
+906	234	5.00	3420	2026-10-11 15:56:56.362714+00	2026-10-11 15:56:56.362714+00
+907	235	1.00	1190	2026-10-11 15:56:56.368566+00	2026-10-11 15:56:56.368566+00
+908	235	2.00	2335	2026-10-11 15:56:56.372352+00	2026-10-11 15:56:56.372352+00
+909	235	3.00	2334	2026-10-11 15:56:56.375175+00	2026-10-11 15:56:56.375175+00
+910	236	1.00	903	2026-10-11 15:56:56.381014+00	2026-10-11 15:56:56.381014+00
+911	236	2.00	3421	2026-10-11 15:56:56.38411+00	2026-10-11 15:56:56.38411+00
+912	237	1.00	778	2026-10-11 15:56:56.390222+00	2026-10-11 15:56:56.390222+00
+913	237	2.00	3422	2026-10-11 15:56:56.393339+00	2026-10-11 15:56:56.393339+00
+914	237	3.00	3423	2026-10-11 15:56:56.396302+00	2026-10-11 15:56:56.396302+00
+915	237	4.00	3424	2026-10-11 15:56:56.400661+00	2026-10-11 15:56:56.400661+00
+916	237	5.00	3425	2026-10-11 15:56:56.404169+00	2026-10-11 15:56:56.404169+00
+917	237	6.00	3426	2026-10-11 15:56:56.407178+00	2026-10-11 15:56:56.407178+00
+918	237	7.00	3427	2026-10-11 15:56:56.410657+00	2026-10-11 15:56:56.410657+00
+919	238	1.00	917	2026-10-11 15:56:56.4175+00	2026-10-11 15:56:56.4175+00
+920	238	2.00	1029	2026-10-11 15:56:56.420769+00	2026-10-11 15:56:56.420769+00
+921	238	3.00	1133	2026-10-11 15:56:56.423822+00	2026-10-11 15:56:56.423822+00
+922	238	4.00	1214	2026-10-11 15:56:56.42686+00	2026-10-11 15:56:56.42686+00
+923	238	5.00	2748	2026-10-11 15:56:56.429757+00	2026-10-11 15:56:56.429757+00
+924	239	1.00	1434	2026-10-11 15:56:56.435843+00	2026-10-11 15:56:56.435843+00
+925	239	2.00	1465	2026-10-11 15:56:56.438993+00	2026-10-11 15:56:56.438993+00
+926	239	3.00	1468	2026-10-11 15:56:56.442038+00	2026-10-11 15:56:56.442038+00
+927	239	4.00	1474	2026-10-11 15:56:56.44502+00	2026-10-11 15:56:56.44502+00
+928	240	1.00	1277	2026-10-11 15:56:56.451603+00	2026-10-11 15:56:56.451603+00
+929	240	4.00	1282	2026-10-11 15:56:56.454728+00	2026-10-11 15:56:56.454728+00
+930	241	1.00	1418	2026-10-11 15:56:56.461138+00	2026-10-11 15:56:56.461138+00
+931	241	2.00	3428	2026-10-11 15:56:56.464241+00	2026-10-11 15:56:56.464241+00
+932	242	1.00	1456	2026-10-11 15:56:56.470349+00	2026-10-11 15:56:56.470349+00
+933	242	2.00	2346	2026-10-11 15:56:56.473202+00	2026-10-11 15:56:56.473202+00
+934	242	3.00	2347	2026-10-11 15:56:56.476049+00	2026-10-11 15:56:56.476049+00
+935	242	4.00	2364	2026-10-11 15:56:56.478838+00	2026-10-11 15:56:56.478838+00
+936	242	5.00	2363	2026-10-11 15:56:56.481939+00	2026-10-11 15:56:56.481939+00
+937	243	1.00	797	2026-10-11 15:56:56.487673+00	2026-10-11 15:56:56.487673+00
+938	243	2.00	809	2026-10-11 15:56:56.490795+00	2026-10-11 15:56:56.490795+00
+939	243	3.00	2394	2026-10-11 15:56:56.493996+00	2026-10-11 15:56:56.493996+00
+940	244	1.00	1454	2026-10-11 15:56:56.500386+00	2026-10-11 15:56:56.500386+00
+941	244	2.00	1463	2026-10-11 15:56:56.503358+00	2026-10-11 15:56:56.503358+00
+942	244	3.00	1520	2026-10-11 15:56:56.506265+00	2026-10-11 15:56:56.506265+00
+943	245	1.00	953	2026-10-11 15:56:56.512361+00	2026-10-11 15:56:56.512361+00
+944	245	2.00	3429	2026-10-11 15:56:56.515421+00	2026-10-11 15:56:56.515421+00
+945	246	1.00	965	2026-10-11 15:56:56.521624+00	2026-10-11 15:56:56.521624+00
+946	246	2.00	1091	2026-10-11 15:56:56.524826+00	2026-10-11 15:56:56.524826+00
+947	246	3.00	1353	2026-10-11 15:56:56.52878+00	2026-10-11 15:56:56.52878+00
+948	246	4.00	1360	2026-10-11 15:56:56.531946+00	2026-10-11 15:56:56.531946+00
+949	247	1.00	833	2026-10-11 15:56:56.538234+00	2026-10-11 15:56:56.538234+00
+950	247	2.00	848	2026-10-11 15:56:56.542122+00	2026-10-11 15:56:56.542122+00
+951	247	3.00	851	2026-10-11 15:56:56.545247+00	2026-10-11 15:56:56.545247+00
+952	247	4.00	906	2026-10-11 15:56:56.548267+00	2026-10-11 15:56:56.548267+00
+953	247	5.00	3430	2026-10-11 15:56:56.551603+00	2026-10-11 15:56:56.551603+00
+954	247	6.00	3431	2026-10-11 15:56:56.554663+00	2026-10-11 15:56:56.554663+00
+955	247	7.00	3432	2026-10-11 15:56:56.557607+00	2026-10-11 15:56:56.557607+00
+956	247	8.00	3433	2026-10-11 15:56:56.561871+00	2026-10-11 15:56:56.561871+00
+957	247	9.00	3434	2026-10-11 15:56:56.564932+00	2026-10-11 15:56:56.564932+00
+958	247	10.00	3435	2026-10-11 15:56:56.567957+00	2026-10-11 15:56:56.567957+00
+959	247	11.00	3436	2026-10-11 15:56:56.571146+00	2026-10-11 15:56:56.571146+00
+960	247	12.00	3437	2026-10-11 15:56:56.574689+00	2026-10-11 15:56:56.574689+00
+961	248	1.00	846	2026-10-11 15:56:56.587839+00	2026-10-11 15:56:56.587839+00
+962	248	2.00	3438	2026-10-11 15:56:56.591258+00	2026-10-11 15:56:56.591258+00
+963	248	3.00	3439	2026-10-11 15:56:56.594274+00	2026-10-11 15:56:56.594274+00
+964	249	1.00	1276	2026-10-11 15:56:56.600475+00	2026-10-11 15:56:56.600475+00
+965	249	2.00	3440	2026-10-11 15:56:56.603747+00	2026-10-11 15:56:56.603747+00
+966	250	1.00	1472	2026-10-11 15:56:56.609609+00	2026-10-11 15:56:56.609609+00
+967	250	2.00	1103	2026-10-11 15:56:56.612825+00	2026-10-11 15:56:56.612825+00
+968	250	3.00	1283	2026-10-11 15:56:56.61571+00	2026-10-11 15:56:56.61571+00
+969	250	4.00	1453	2026-10-11 15:56:56.61859+00	2026-10-11 15:56:56.61859+00
+970	251	1.00	1402	2026-10-11 15:56:56.624418+00	2026-10-11 15:56:56.624418+00
+971	251	2.00	2360	2026-10-11 15:56:56.627306+00	2026-10-11 15:56:56.627306+00
+972	251	3.00	3441	2026-10-11 15:56:56.630397+00	2026-10-11 15:56:56.630397+00
+973	252	1.00	991	2026-10-11 15:56:56.636247+00	2026-10-11 15:56:56.636247+00
+974	252	2.00	3442	2026-10-11 15:56:56.639066+00	2026-10-11 15:56:56.639066+00
+975	252	3.00	3443	2026-10-11 15:56:56.641978+00	2026-10-11 15:56:56.641978+00
+976	252	4.00	3444	2026-10-11 15:56:56.644773+00	2026-10-11 15:56:56.644773+00
+977	253	1.00	882	2026-10-11 15:56:56.650575+00	2026-10-11 15:56:56.650575+00
+978	253	2.00	1025	2026-10-11 15:56:56.653502+00	2026-10-11 15:56:56.653502+00
+979	253	3.00	1094	2026-10-11 15:56:56.656431+00	2026-10-11 15:56:56.656431+00
+980	254	3.00	995	2026-10-11 15:56:56.662075+00	2026-10-11 15:56:56.662075+00
+\.
+
+
+--
+-- Data for Name: yearly_goal; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.yearly_goal (id, year, books_goal, pages_goal, created_at, updated_at) FROM stdin;
+1	2020	100	30000	2026-10-12 07:05:37.383731+00	2026-10-12 07:05:37.779373+00
+2	2021	100	30000	2026-10-12 07:05:39.9029+00	2026-10-12 07:05:49.514571+00
+3	2022	50	15000	2026-10-12 07:05:56.653723+00	2026-10-12 07:05:56.659751+00
+4	2023	100	30000	2026-10-12 07:06:07.102411+00	2026-10-12 07:06:07.106644+00
+5	2024	100	30000	2026-10-12 07:06:13.794018+00	2026-10-12 07:06:13.800886+00
+6	2025	120	50000	2026-10-12 07:06:21.582107+00	2026-10-12 07:06:21.586267+00
+7	2026	120	50000	2026-10-12 07:06:28.311647+00	2026-10-12 07:06:28.315655+00
 \.
 
 
@@ -10873,10 +12410,45 @@ SELECT pg_catalog.setval('public.author_id_seq', 1656, true);
 
 
 --
+-- Name: bingo_board_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bingo_board_id_seq', 4, true);
+
+
+--
+-- Name: bingo_prompt_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bingo_prompt_id_seq', 100, true);
+
+
+--
 -- Name: book_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.book_id_seq', 3028, true);
+SELECT pg_catalog.setval('public.book_id_seq', 3444, true);
+
+
+--
+-- Name: bookclub_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bookclub_id_seq', 9, true);
+
+
+--
+-- Name: bookclub_pick_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bookclub_pick_id_seq', 95, true);
+
+
+--
+-- Name: bookclub_year_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bookclub_year_id_seq', 30, true);
 
 
 --
@@ -10911,14 +12483,21 @@ SELECT pg_catalog.setval('public.reading_id_seq', 1552, true);
 -- Name: series_entry_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.series_entry_id_seq', 1, false);
+SELECT pg_catalog.setval('public.series_entry_id_seq', 980, true);
 
 
 --
 -- Name: series_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.series_id_seq', 1, false);
+SELECT pg_catalog.setval('public.series_id_seq', 254, true);
+
+
+--
+-- Name: yearly_goal_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.yearly_goal_id_seq', 7, true);
 
 
 --
@@ -10927,6 +12506,46 @@ SELECT pg_catalog.setval('public.series_id_seq', 1, false);
 
 ALTER TABLE ONLY public.author
     ADD CONSTRAINT author_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bingo_board bingo_board_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_board
+    ADD CONSTRAINT bingo_board_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bingo_board bingo_board_year_season_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_board
+    ADD CONSTRAINT bingo_board_year_season_key UNIQUE (year, season);
+
+
+--
+-- Name: bingo_prompt bingo_prompt_board_id_position_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_prompt
+    ADD CONSTRAINT bingo_prompt_board_id_position_key UNIQUE (board_id, "position");
+
+
+--
+-- Name: bingo_prompt bingo_prompt_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_prompt
+    ADD CONSTRAINT bingo_prompt_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bingo_prompt bingo_prompt_reading_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_prompt
+    ADD CONSTRAINT bingo_prompt_reading_id_key UNIQUE (reading_id);
 
 
 --
@@ -10975,6 +12594,38 @@ ALTER TABLE ONLY public.book
 
 ALTER TABLE ONLY public.book_setting
     ADD CONSTRAINT book_setting_pkey PRIMARY KEY (book_id, "position");
+
+
+--
+-- Name: bookclub_pick bookclub_pick_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub_pick
+    ADD CONSTRAINT bookclub_pick_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bookclub bookclub_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub
+    ADD CONSTRAINT bookclub_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bookclub_year bookclub_year_bookclub_id_year_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub_year
+    ADD CONSTRAINT bookclub_year_bookclub_id_year_key UNIQUE (bookclub_id, year);
+
+
+--
+-- Name: bookclub_year bookclub_year_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub_year
+    ADD CONSTRAINT bookclub_year_pkey PRIMARY KEY (id);
 
 
 --
@@ -11074,6 +12725,22 @@ ALTER TABLE ONLY public.series
 
 
 --
+-- Name: yearly_goal yearly_goal_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearly_goal
+    ADD CONSTRAINT yearly_goal_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearly_goal yearly_goal_year_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearly_goal
+    ADD CONSTRAINT yearly_goal_year_key UNIQUE (year);
+
+
+--
 -- Name: author_name_uq; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11092,6 +12759,27 @@ CREATE INDEX book_author_author_idx ON public.book_author USING btree (author_id
 --
 
 CREATE INDEX book_title_idx ON public.book USING btree (lower(title));
+
+
+--
+-- Name: bookclub_name_uq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX bookclub_name_uq ON public.bookclub USING btree (lower(name));
+
+
+--
+-- Name: bookclub_pick_book_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bookclub_pick_book_idx ON public.bookclub_pick USING btree (book_id);
+
+
+--
+-- Name: bookclub_pick_club_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bookclub_pick_club_idx ON public.bookclub_pick USING btree (bookclub_id, year, period);
 
 
 --
@@ -11186,6 +12874,22 @@ CREATE UNIQUE INDEX series_name_uq ON public.series USING btree (lower(name));
 
 
 --
+-- Name: bingo_prompt bingo_prompt_board_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_prompt
+    ADD CONSTRAINT bingo_prompt_board_id_fkey FOREIGN KEY (board_id) REFERENCES public.bingo_board(id) ON DELETE CASCADE;
+
+
+--
+-- Name: bingo_prompt bingo_prompt_reading_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bingo_prompt
+    ADD CONSTRAINT bingo_prompt_reading_id_fkey FOREIGN KEY (reading_id) REFERENCES public.reading(id) ON DELETE SET NULL;
+
+
+--
 -- Name: book_author book_author_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11215,6 +12919,30 @@ ALTER TABLE ONLY public.book_genre
 
 ALTER TABLE ONLY public.book_setting
     ADD CONSTRAINT book_setting_book_id_fkey FOREIGN KEY (book_id) REFERENCES public.book(id) ON DELETE CASCADE;
+
+
+--
+-- Name: bookclub_pick bookclub_pick_book_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub_pick
+    ADD CONSTRAINT bookclub_pick_book_id_fkey FOREIGN KEY (book_id) REFERENCES public.book(id);
+
+
+--
+-- Name: bookclub_pick bookclub_pick_bookclub_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub_pick
+    ADD CONSTRAINT bookclub_pick_bookclub_id_fkey FOREIGN KEY (bookclub_id) REFERENCES public.bookclub(id) ON DELETE CASCADE;
+
+
+--
+-- Name: bookclub_year bookclub_year_bookclub_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookclub_year
+    ADD CONSTRAINT bookclub_year_bookclub_id_fkey FOREIGN KEY (bookclub_id) REFERENCES public.bookclub(id) ON DELETE CASCADE;
 
 
 --
